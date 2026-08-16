@@ -1,0 +1,7 @@
+subscription_id      = "SUB_nonprod"
+resource_group_name  = "RG_nonprod"
+storage_account_name = "SA_nonprod"
+container_name       = "SA-blob"
+key                  = "nonprod.tfstate"
+use_oidc             = true
+use_azuread_auth     = true
