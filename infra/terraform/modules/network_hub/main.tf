@@ -8,6 +8,10 @@ resource "azurerm_virtual_network" "hub_vnet" {
   location            = var.location
   address_space       = [var.hub_address_space]
   tags                = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_subnet" "firewall" {
@@ -53,5 +57,9 @@ resource "azurerm_firewall" "fw" {
     name                 = "ipconfig"
     subnet_id            = azurerm_subnet.firewall[0].id
     public_ip_address_id = azurerm_public_ip.firewall[0].id
+  }
+  
+  lifecycle {
+    create_before_destroy = true
   }
 }

@@ -8,6 +8,10 @@ resource "azurerm_virtual_network" "spoke_vnet" {
   location            = var.location
   address_space       = [var.spoke_address_space]
   tags                = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -19,11 +23,14 @@ resource "azurerm_virtual_network_peering" "spoke_to_hub" {
   resource_group_name       = var.resource_group_name
   virtual_network_name      = azurerm_virtual_network.spoke_vnet.name
   remote_virtual_network_id = var.hub_vnet_id
-
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
   use_remote_gateways          = false
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_virtual_network_peering" "hub_to_spoke" {
@@ -31,11 +38,15 @@ resource "azurerm_virtual_network_peering" "hub_to_spoke" {
   resource_group_name       = var.hub_resource_group_name
   virtual_network_name      = var.hub_vnet_name
   remote_virtual_network_id = azurerm_virtual_network.spoke_vnet.id
-
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
   use_remote_gateways          = false
+
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = true
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -72,6 +83,10 @@ resource "azurerm_network_security_rule" "aks_nodes" {
   destination_address_prefixes = try(each.value.destination_address_prefixes, null)
   resource_group_name          = var.resource_group_name
   network_security_group_name  = azurerm_network_security_group.aks_nodes.name
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "aks_nodes" {
@@ -136,6 +151,10 @@ resource "azurerm_network_security_rule" "private_endpoints" {
   destination_address_prefixes = [var.private_endpoint_subnet_prefix]
   resource_group_name          = var.resource_group_name
   network_security_group_name  = azurerm_network_security_group.private_endpoints.name
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "private_endpoints" {
@@ -200,6 +219,10 @@ resource "azurerm_network_security_rule" "pipeline_agents" {
   destination_address_prefixes = try(each.value.destination_address_prefixes, null)
   resource_group_name          = var.resource_group_name
   network_security_group_name  = azurerm_network_security_group.pipeline_agents.name
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "pipeline_agents" {
