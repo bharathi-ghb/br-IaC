@@ -33,6 +33,7 @@ variable "tags" {
 # -----------------------------------------------------------------------------
 # Network Components Variables
 # -----------------------------------------------------------------------------
+
 variable "hub_address_space" {
   description = "CIDR of the hub VNet."
   type        = string
@@ -116,4 +117,14 @@ variable "firewall_name" {
   description = "Name of the Azure Firewall"
   type        = string
   default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# DNS Components Variables
+# -----------------------------------------------------------------------------
+
+variable "private_dns_zones" {
+  description = "List of private DNS zones to create."
+  type        = list(string)
+  default     = []
 }

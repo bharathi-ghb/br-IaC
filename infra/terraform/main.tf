@@ -19,7 +19,7 @@ resource "azurerm_resource_group" "rg_hub" {
 }
 
 # -----------------------------------------------------------------------------
-# 1. Network — VNets + subnets + NSGs + Firewall + Spoke Peering + Association
+# Network Components  — VNets(Hub + Spoke) + subnets + NSGs + Firewall + Spoke Peering + Association
 # -----------------------------------------------------------------------------
 module "network_hub" {
   source = "../modules/network-hub"
@@ -59,4 +59,19 @@ module "network_spoke" {
   hub_resource_group_name        = azurerm_resource_group.rg_hub.name
   internal_consumer_cidrs        = var.internal_consumer_cidrs
   enable_diagnostics             = true
+}
+
+# -----------------------------------------------------------------------------
+# DNS Components  — Private DNS Zones + VNet Links
+# -----------------------------------------------------------------------------
+
+module "private_dns" {
+  source = "../modules/private-dns"
+  resource_group_name = azurerm_resource_group.rg_hub.name
+  tags                = azurerm_resource_group.rg_hub.tags
+  zone_names          = var.private_dns_zones
+  linked_virtual_networks = {
+    spoke = module.network_spoke.spoke_vnet_id
+    hub   = module.network_hub.hub_vnet_id
+  }
 }

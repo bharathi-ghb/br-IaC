@@ -60,3 +60,12 @@ tags = {
   owner     = "abn-amro"
   environment = "nonprod"
 }
+
+private_dns_zones = [
+  "privatelink.blob.core.windows.net",
+  "privatelink.vaultcore.azure.net",
+  "privatelink.azurecr.io",
+  "privatelink.monitor.azure.com",
+  "privatelink.ods.opinsights.azure.com",
+  "privatelink.oms.opinsights.azure.com"
+]
