@@ -29,37 +29,37 @@ variable "ampls_name" {
 }
 
 variable "retention_in_days" {
-  description = "Log retention. Financial services frequently mandate 365+ days for audit logs; interactive retention beyond 90 days costs more."
+  description = "Log retention."
   type        = number
   default     = 90
 }
 
 variable "daily_quota_gb" {
-  description = "Daily ingestion cap in GB. -1 means unlimited. A cap protects the budget but drops data once hit, so use with care in production."
+  description = "Daily ingestion cap in GB. -1 means unlimited."
   type        = number
   default     = -1
 }
 
 variable "sampling_percentage" {
-  description = "Application Insights sampling. 100 keeps every trace; lower it if telemetry cost becomes material."
+  description = "Application Insights sampling. 100 keeps every trace."
   type        = number
   default     = 100
 }
 
 variable "enable_local_auth" {
-  description = "Require Entra ID authentication for telemetry ingestion instead of shared keys."
+  description = "Require Entra ID authentication."
   type        = bool
   default     = false
 }
 
 variable "enable_private_link" {
-  description = "Create an Azure Monitor Private Link Scope and private endpoint so telemetry stays on the private network."
+  description = "Create an Azure Monitor Private Link Scope and private endpoint."
   type        = bool
   default     = false
 }
 
 variable "allow_public_query" {
-  description = "Allow queries (portal, workbooks) from outside the VNet while keeping ingestion private. Set false for a fully private monitoring plane."
+  description = "Allow queries (portal, workbooks) from outside the VNet while keeping ingestion private."
   type        = bool
   default     = false
 }
@@ -71,13 +71,13 @@ variable "private_endpoint_subnet_id" {
 }
 
 variable "monitor_private_dns_zone_ids" {
-  description = "Resource IDs of all five Azure Monitor privatelink zones. All are required for complete private resolution."
+  description = "Resource IDs of all five Azure Monitor privatelink zones."
   type        = list(string)
   default     = []
 }
 
 variable "alert_email_receivers" {
-  description = "Map of receiver name to email address for the platform action group. Empty map disables alerting."
+  description = "Map of receiver name to email address for the platform action group."
   type        = map(string)
   default     = {}
 }
