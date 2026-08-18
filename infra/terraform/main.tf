@@ -75,3 +75,22 @@ module "private_dns" {
     hub   = module.network_hub.hub_vnet_id
   }
 }
+
+# -----------------------------------------------------------------------------
+# ACR Components — ACR + Private Endpoint + Private DNS Zone Link
+# -----------------------------------------------------------------------------
+
+module "acr" {
+  source = "../modules/container-registry"
+  name                      = "acr${var.environment}"
+  resource_group_name        = azurerm_resource_group.rg_infra.name
+  location                   = azurerm_resource_group.rg_infra.location
+  tags                       = azurerm_resource_group.rg_infra.tags
+  private_endpoint_subnet_id = module.network_spoke.private_endpoint_subnet_id
+  private_dns_zone_id        = module.private_dns.zone_ids["privatelink.azurecr.io"]
+  pull_principal_ids         = ""
+  push_principal_ids         = ""
+  untagged_retention_days    = ""
+  enable_diagnostics         = true
+  log_analytics_workspace_id = ""
+}
