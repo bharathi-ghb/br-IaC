@@ -112,6 +112,7 @@ module "storage" {
   cache_expiry_days              = var.cache_expiry_days
   private_endpoint_subnet_id     = module.network_spoke.private_endpoint_subnet_id
   blob_private_dns_zone_id       = module.private_dns.zone_ids["privatelink.blob.core.windows.net"]
+  blob_private_dns_zone_name     = module.private_dns.zone_names["privatelink.blob.core.windows.net"]
   data_contributor_principal_ids = ""
   enable_diagnostics             = true
   log_analytics_workspace_id     = ""
@@ -131,6 +132,7 @@ module "key_vault" {
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   private_endpoint_subnet_id    = module.network_spoke.private_endpoint_subnet_id
   private_dns_zone_id           = module.private_dns.zone_ids["privatelink.vaultcore.azure.net"]
+  private_dns_zone_name         = module.private_dns.zone_names["privatelink.vaultcore.azure.net"]
   secrets_user_principal_ids    = ""
   secrets_officer_principal_ids = ""
   enable_diagnostics            = true

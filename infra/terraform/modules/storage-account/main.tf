@@ -63,6 +63,15 @@ resource "azurerm_private_endpoint" "storage_blob" {
   }
 }
 
+resource "azurerm_private_dns_a_record" "storage_blob" {
+  name                = azurerm_storage_account.sa.name
+  zone_name           = var.blob_private_dns_zone_name
+  resource_group_name = var.resource_group_name
+  ttl                 = 300
+  records = [azurerm_private_endpoint.storage_blob.private_service_connection[0].private_ip_address]
+  tags = var.tags
+}
+
 resource "azurerm_role_assignment" "rbac" {
   for_each = toset(var.data_contributor_principal_ids)
 

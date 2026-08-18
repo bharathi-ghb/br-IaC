@@ -45,6 +45,11 @@ variable "private_dns_zone_id" {
   type        = string
 }
 
+variable "private_dns_zone_name" {
+  description = "Name of the privatelink.vaultcore.azure.net zone."
+  type        = string
+}
+
 variable "secrets_user_principal_ids" {
   description = "Object IDs granted read access to secret values."
   type        = list(string)

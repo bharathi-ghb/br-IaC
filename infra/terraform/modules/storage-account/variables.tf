@@ -58,6 +58,11 @@ variable "blob_private_dns_zone_id" {
   type        = string
 }
 
+variable "blob_private_dns_zone_name" {
+  description = "Name of the blob dns zone."
+  type        = string
+}
+
 variable "data_contributor_principal_ids" {
   description = "Object IDs granted the roles in role_definition_names."
   type        = list(string)
