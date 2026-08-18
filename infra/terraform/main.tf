@@ -166,3 +166,39 @@ module "key_vault" {
   enable_diagnostics            = true
   log_analytics_workspace_id    = module.observability.log_analytics_workspace_id
 }
+
+# ---------------------------------------------------------------------------
+# AKS Components + Private Endpoint + Private DNS Zone Link
+# ---------------------------------------------------------------------------
+module "aks" {
+  source = "../modules/aks"
+  name                        = "aks-${var.environment}-${var.name_prefix}"
+  node_resource_group_name    = azurerm_resource_group.rg_infra.name
+  control_plane_identity_name = "id-aks-${var.environment}-${var.name_prefix}"
+  resource_group_name         = azurerm_resource_group.rg_infra.name
+  location                    = azurerm_resource_group.rg_infra.location
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  tags                        = azurerm_resource_group.rg_infra.tags
+  kubernetes_version          = var.kubernetes_version
+  sku_tier                    = var.aks_sku_tier
+  node_subnet_id              = module.network_spoke.aks_subnet_id
+  enable_forced_tunnelling    = var.enable_firewall
+  private_dns_zone_id         = module.private_dns.zone_ids["privatelink.westeurope.azmk8s.io"]
+  private_dns_zone_name       = module.private_dns.zone_names["privatelink.westeurope.azmk8s.io"]
+  route_table_id              = module.network_spoke.route_table_id
+  pod_cidr                    = var.pod_cidr
+  service_cidr                = var.service_cidr
+  dns_service_ip              = var.dns_service_ip
+  availability_zones          = var.availability_zones
+  system_node_vm_size         = var.system_node_vm_size
+  system_node_min_count       = var.system_node_min_count
+  system_node_max_count       = var.system_node_max_count
+  enable_user_node_pool       = var.enable_user_node_pool
+  user_node_vm_size           = var.user_node_vm_size
+  user_node_min_count         = var.user_node_min_count
+  user_node_max_count         = var.user_node_max_count
+  admin_group_object_ids      = var.aks_admin_group_object_ids
+  reader_group_object_ids     = var.aks_reader_group_object_ids
+  deployer_principal_ids      = var.pipeline_principal_ids
+  log_analytics_workspace_id  = module.observability.log_analytics_workspace_id
+}

@@ -31,6 +31,40 @@ variable "tags" {
 }
 
 # -----------------------------------------------------------------------------
+# Observability components Variables
+# -----------------------------------------------------------------------------
+
+variable "log_retention_days" {
+  description = "Log Analytics retention in days."
+  type        = number
+  default     = 90
+}
+
+variable "log_daily_quota_gb" {
+  description = "Daily ingestion cap in GB (-1 for unlimited)."
+  type        = number
+  default     = -1
+}
+
+variable "enable_monitor_private_link" {
+  description = "Create an Azure Monitor Private Link Scope."
+  type        = bool
+  default     = true
+}
+
+variable "allow_public_log_query" {
+  description = "Allow log queries from outside the VNet."
+  type        = bool
+  default     = false
+}
+
+variable "alert_email_receivers" {
+  description = "Map of receiver name to email address for alerts."
+  type        = map(string)
+  default     = {}
+}
+
+# -----------------------------------------------------------------------------
 # Network Components Variables
 # -----------------------------------------------------------------------------
 
@@ -170,35 +204,101 @@ variable "enable_kv_purge_protection" {
 }
 
 # -----------------------------------------------------------------------------
-# Observability components Variables
+# AKS Components Variables
 # -----------------------------------------------------------------------------
 
-variable "log_retention_days" {
-  description = "Log Analytics retention in days."
-  type        = number
-  default     = 90
+variable "kubernetes_version" {
+  description = "Pinned Kubernetes minor version."
+  type        = string
+  default     = "1.30"
 }
 
-variable "log_daily_quota_gb" {
-  description = "Daily ingestion cap in GB (-1 for unlimited)."
-  type        = number
-  default     = -1
+variable "aks_sku_tier" {
+  description = "AKS control-plane tier."
+  type        = string
+  default     = "Standard"
 }
 
-variable "enable_monitor_private_link" {
-  description = "Create an Azure Monitor Private Link Scope."
+variable "pod_cidr" {
+  description = "Overlay CIDR for pods."
+  type        = string
+  default     = "192.168.0.0/16"
+}
+
+variable "service_cidr" {
+  description = "CIDR for Kubernetes services."
+  type        = string
+  default     = "172.16.0.0/16"
+}
+
+variable "dns_service_ip" {
+  description = "CoreDNS service IP, inside service_cidr."
+  type        = string
+  default     = "172.16.0.10"
+}
+
+variable "system_node_vm_size" {
+  description = "VM size for the system node pool."
+  type        = string
+  default     = "Standard_D2s_v5"
+}
+
+variable "system_node_min_count" {
+  description = "Minimum system nodes."
+  type        = number
+  default     = 2
+}
+
+variable "system_node_max_count" {
+  description = "Maximum system nodes."
+  type        = number
+  default     = 4
+}
+
+variable "enable_user_node_pool" {
+  description = "Create a dedicated application node pool."
   type        = bool
   default     = true
 }
 
-variable "allow_public_log_query" {
-  description = "Allow log queries from outside the VNet."
-  type        = bool
-  default     = false
+variable "user_node_vm_size" {
+  description = "VM size for the application node pool."
+  type        = string
+  default     = "Standard_D2s_v5"
 }
 
-variable "alert_email_receivers" {
-  description = "Map of receiver name to email address for alerts."
-  type        = map(string)
-  default     = {}
+variable "user_node_min_count" {
+  description = "Minimum application nodes."
+  type        = number
+  default     = 2
+}
+
+variable "user_node_max_count" {
+  description = "Maximum application nodes."
+  type        = number
+  default     = 6
+}
+
+variable "aks_admin_group_object_ids" {
+  description = "Entra group object IDs with cluster-admin via Azure RBAC. Prefer PIM-eligible groups."
+  type        = list(string)
+  default     = []
+}
+
+variable "aks_reader_group_object_ids" {
+  description = "Entra group object IDs with read-only cluster access."
+  type        = list(string)
+  default     = []
+}
+
+variable "kv_admin_group_object_ids" {
+  description = "Entra group object IDs allowed to manage Key Vault secrets."
+  type        = list(string)
+  default     = []
+}
+
+variable "pipeline_principal_ids" {
+  description = "Object ID(s) of the Azure DevOps service connection identity. Granted AcrPush and AKS RBAC Writer - deliberately not Owner or Contributor."
+  type        = list(string)
+  default     = []
 }

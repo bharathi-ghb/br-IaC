@@ -68,7 +68,8 @@ private_dns_zones = [
   "privatelink.monitor.azure.com",
   "privatelink.ods.opinsights.azure.com",
   "privatelink.oms.opinsights.azure.com",
-  "privatelink.agentsvc.azure-automation.net"
+  "privatelink.agentsvc.azure-automation.net",
+  "privatelink.westeurope.azmk8s.io"
 ]
 
 alert_email_receivers = {
