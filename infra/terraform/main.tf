@@ -1,7 +1,7 @@
 # =============================================================================
 #                   Central Terraform Module.
 # =============================================================================
-# Pre-requisites: RG
+# Pre-requisites: RG + Defaults
 # =============================================================================
 
 data "azurerm_client_config" "current" {}
@@ -93,4 +93,26 @@ module "acr" {
   untagged_retention_days    = ""
   enable_diagnostics         = true
   log_analytics_workspace_id = ""
+}
+
+# -----------------------------------------------------------------------------
+# Storage Components — Storage Account + Private Endpoint + Private DNS Zone Link
+# -----------------------------------------------------------------------------
+
+module "storage" {
+  source   = "../modules/storage-account"
+  for_each = { for i in range(var.storage_account_count) : format("%02d", i + 1) => i }
+
+  name                           = "sa${var.environment}${each.key}"
+  resource_group_name            = azurerm_resource_group.rg_infra.name
+  location                       = azurerm_resource_group.rg_infra.location
+  tags                           = azurerm_resource_group.rg_infra.tags
+  replication_type               = var.storage_replication_type
+  cache_container_name           = var.cache_container_name
+  cache_expiry_days              = var.cache_expiry_days
+  private_endpoint_subnet_id     = module.network_spoke.private_endpoint_subnet_id
+  blob_private_dns_zone_id       = module.private_dns.zone_ids["privatelink.blob.core.windows.net"]
+  data_contributor_principal_ids = ""
+  enable_diagnostics             = true
+  log_analytics_workspace_id     = ""
 }

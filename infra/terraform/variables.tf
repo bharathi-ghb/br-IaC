@@ -128,3 +128,43 @@ variable "private_dns_zones" {
   type        = list(string)
   default     = []
 }
+
+# -----------------------------------------------------------------------------
+# Storage Components Variables
+# -----------------------------------------------------------------------------
+
+variable "storage_account_count" {
+  description = "sequentially-suffixed storage accounts to create"
+  type        = number
+  default     = 1
+}
+
+variable "storage_replication_type" {
+  description = "Storage replication mode."
+  type        = string
+  default     = "LRS"
+}
+
+variable "cache_container_name" {
+  description = "Blob container used for cached upstream responses."
+  type        = string
+  default     = "shows-cache"
+}
+
+variable "cache_expiry_days" {
+  description = "Days before a cached blob is deleted by lifecycle management."
+  type        = number
+  default     = 7
+}
+
+variable "acr_untagged_retention_days" {
+  description = "Days to keep untagged manifests in the registry."
+  type        = number
+  default     = 7
+}
+
+variable "enable_kv_purge_protection" {
+  description = "Enable Key Vault purge protection. Irreversible once on."
+  type        = bool
+  default     = true
+}
