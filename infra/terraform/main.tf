@@ -174,7 +174,7 @@ module "aks" {
   source = "../modules/aks"
   name                        = "aks-${var.environment}-${var.name_prefix}"
   node_resource_group_name    = azurerm_resource_group.rg_infra.name
-  control_plane_identity_name = "id-aks-${var.environment}-${var.name_prefix}"
+  control_plane_identity_name = "id-aks-control-${var.environment}-${var.name_prefix}"
   resource_group_name         = azurerm_resource_group.rg_infra.name
   location                    = azurerm_resource_group.rg_infra.location
   tenant_id                   = data.azurerm_client_config.current.tenant_id
@@ -201,4 +201,39 @@ module "aks" {
   reader_group_object_ids     = var.aks_reader_group_object_ids
   deployer_principal_ids      = var.pipeline_principal_ids
   log_analytics_workspace_id  = module.observability.log_analytics_workspace_id
+}
+
+# ---------------------------------------------------------------------------
+# Identity Components
+# ---------------------------------------------------------------------------
+
+module "identity" {
+  source = "../modules/identity"
+
+  identity_name       = "id-aks-${var.environment}-${var.name_prefix}"
+  resource_group_name = azurerm_resource_group.rg_infra.name
+  location            = azurerm_resource_group.rg_infra.location
+  tags                = azurerm_resource_group.rg_infra.tags
+  oidc_issuer_url     = module.aks.oidc_issuer_url
+
+  service_accounts = {
+    api = {
+      namespace            = var.app_namespace
+      service_account_name = var.app_service_account_name
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Governance
+# ---------------------------------------------------------------------------
+module "governance" {
+  source = "../modules/governance"
+
+  resource_group_name      = azurerm_resource_group.rg_infra.name
+  allowed_locations        = var.policy_allowed_locations
+  required_tags            = var.policy_required_tags
+  kubernetes_policy_effect = var.kubernetes_policy_effect
+  enforce                  = var.policy_enforce
+  depends_on = [module.aks, module.storage, module.acr]
 }

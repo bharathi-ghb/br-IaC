@@ -302,3 +302,47 @@ variable "pipeline_principal_ids" {
   type        = list(string)
   default     = []
 }
+
+# -----------------------------------------------------------------------------
+# Identity Components Variables
+# -----------------------------------------------------------------------------
+
+variable "app_namespace" {
+  description = "Kubernetes namespace for the application. Must match the Helm release namespace."
+  type        = string
+  default     = "banking-api"
+}
+
+variable "app_service_account_name" {
+  description = "ServiceAccount name federated to the workload identity. Must match the Helm chart."
+  type        = string
+  default     = "banking-api"
+}
+
+# -----------------------------------------------------------------------------
+# Policy Components Variables
+# -----------------------------------------------------------------------------
+
+variable "policy_allowed_locations" {
+  description = "Regions permitted by the data residency policy."
+  type        = list(string)
+  default     = ["westeurope", "northeurope"]
+}
+
+variable "policy_required_tags" {
+  description = "Tags every resource must carry."
+  type        = list(string)
+  default     = ["environment", "owner", "cost_centre"]
+}
+
+variable "kubernetes_policy_effect" {
+  description = "Effect for in-cluster Gatekeeper policies: Audit, Deny or Disabled."
+  type        = string
+  default     = "Audit"
+}
+
+variable "policy_enforce" {
+  description = "Whether policy assignments enforce their effect."
+  type        = bool
+  default     = true
+}
