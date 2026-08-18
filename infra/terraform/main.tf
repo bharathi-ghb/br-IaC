@@ -1,8 +1,10 @@
 # =============================================================================
 #                   Central Terraform Module.
 # =============================================================================
+
+# -----------------------------------------------------------------------------
 # Pre-requisites: RG + Defaults
-# =============================================================================
+# -----------------------------------------------------------------------------
 
 data "azurerm_client_config" "current" {}
 
@@ -19,8 +21,30 @@ resource "azurerm_resource_group" "rg_hub" {
 }
 
 # -----------------------------------------------------------------------------
+# Diagnostics settings (Log Analytics Workspace, App Insights, Azure Monitor)
+# -----------------------------------------------------------------------------
+
+module "observability" {
+  source = "../modules/observability"
+  resource_group_name          = azurerm_resource_group.rg_infra.name
+  location                     = azurerm_resource_group.rg_infra.location
+  tags                         = azurerm_resource_group.rg_infra.tags
+  log_analytics_name           = "log-${var.environment}-${var.name_prefix}"
+  app_insights_name            = "appi-${var.environment}-${var.name_prefix}"
+  ampls_name                   = "ampls-${var.environment}-${var.name_prefix}"
+  retention_in_days            = var.log_retention_days
+  daily_quota_gb               = var.log_daily_quota_gb
+  enable_private_link          = var.enable_monitor_private_link
+  allow_public_query           = var.allow_public_log_query
+  private_endpoint_subnet_id   = module.network_spoke.private_endpoint_subnet_id
+  monitor_private_dns_zone_ids = [for z in var.private_dns_zones : module.private_dns.zone_ids[z]]
+  alert_email_receivers        = var.alert_email_receivers
+}
+
+# -----------------------------------------------------------------------------
 # Network Components  — VNets(Hub + Spoke) + subnets + NSGs + Firewall + Spoke Peering + Association
 # -----------------------------------------------------------------------------
+
 module "network_hub" {
   source = "../modules/network-hub"
   location                = azurerm_resource_group.rg_hub.location
@@ -38,7 +62,8 @@ module "network_hub" {
   route_table_name        = var.route_table_name
   spoke_address_spaces    = [var.spoke_address_space]
   allowed_egress_fqdns    = var.allowed_egress_fqdns
-  enable_diagnostics      = true
+  enable_diagnostics         = true
+  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
 }
 
 module "network_spoke" {
@@ -59,6 +84,7 @@ module "network_spoke" {
   hub_resource_group_name        = azurerm_resource_group.rg_hub.name
   internal_consumer_cidrs        = var.internal_consumer_cidrs
   enable_diagnostics             = true
+  log_analytics_workspace_id     = module.observability.log_analytics_workspace_id
 }
 
 # -----------------------------------------------------------------------------
@@ -70,6 +96,8 @@ module "private_dns" {
   resource_group_name = azurerm_resource_group.rg_hub.name
   tags                = azurerm_resource_group.rg_hub.tags
   zone_names          = var.private_dns_zones
+  enable_diagnostics  = true
+  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
   linked_virtual_networks = {
     spoke = module.network_spoke.spoke_vnet_id
     hub   = module.network_hub.hub_vnet_id
@@ -92,7 +120,7 @@ module "acr" {
   push_principal_ids         = ""
   untagged_retention_days    = ""
   enable_diagnostics         = true
-  log_analytics_workspace_id = ""
+  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
 }
 
 # -----------------------------------------------------------------------------
@@ -115,7 +143,7 @@ module "storage" {
   blob_private_dns_zone_name     = module.private_dns.zone_names["privatelink.blob.core.windows.net"]
   data_contributor_principal_ids = ""
   enable_diagnostics             = true
-  log_analytics_workspace_id     = ""
+  log_analytics_workspace_id     = module.observability.log_analytics_workspace_id
 }
 
 # -----------------------------------------------------------------------------
@@ -136,5 +164,5 @@ module "key_vault" {
   secrets_user_principal_ids    = ""
   secrets_officer_principal_ids = ""
   enable_diagnostics            = true
-  log_analytics_workspace_id    = ""
+  log_analytics_workspace_id    = module.observability.log_analytics_workspace_id
 }

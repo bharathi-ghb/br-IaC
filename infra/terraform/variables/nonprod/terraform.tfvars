@@ -67,5 +67,12 @@ private_dns_zones = [
   "privatelink.azurecr.io",
   "privatelink.monitor.azure.com",
   "privatelink.ods.opinsights.azure.com",
-  "privatelink.oms.opinsights.azure.com"
+  "privatelink.oms.opinsights.azure.com",
+  "privatelink.agentsvc.azure-automation.net"
 ]
+
+alert_email_receivers = {
+  team1 = "xyz@abc.com"
+  team2 = "app@abc.com"
+  team3 = "db@abc.com"
+}

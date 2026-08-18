@@ -168,3 +168,37 @@ variable "enable_kv_purge_protection" {
   type        = bool
   default     = true
 }
+
+# -----------------------------------------------------------------------------
+# Observability components Variables
+# -----------------------------------------------------------------------------
+
+variable "log_retention_days" {
+  description = "Log Analytics retention in days."
+  type        = number
+  default     = 90
+}
+
+variable "log_daily_quota_gb" {
+  description = "Daily ingestion cap in GB (-1 for unlimited)."
+  type        = number
+  default     = -1
+}
+
+variable "enable_monitor_private_link" {
+  description = "Create an Azure Monitor Private Link Scope."
+  type        = bool
+  default     = true
+}
+
+variable "allow_public_log_query" {
+  description = "Allow log queries from outside the VNet."
+  type        = bool
+  default     = false
+}
+
+variable "alert_email_receivers" {
+  description = "Map of receiver name to email address for alerts."
+  type        = map(string)
+  default     = {}
+}

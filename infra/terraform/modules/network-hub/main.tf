@@ -63,3 +63,18 @@ resource "azurerm_firewall" "fw" {
     create_before_destroy = true
   }
 }
+
+resource "azurerm_monitor_diagnostic_setting" "network_hub" {
+  for_each = var.enable_diagnostics ? toset(["network_hub"]) : toset([])
+
+  name                       = "network-hub-diagnostics-to-law"
+  target_resource_id         = azurerm_virtual_network.hub_vnet.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log { 
+    category_group = "allLogs" 
+  }
+  enabled_metric {
+    category = "AllMetrics"
+  }
+}

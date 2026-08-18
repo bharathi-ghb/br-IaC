@@ -147,3 +147,15 @@ variable "nsg_rules_pipeline_agents" {
   }))
   default = []
 }
+
+variable "enable_diagnostics" {
+  description = "Send resource logs to Log Analytics. A boolean (rather than a null check on the workspace ID) keeps resource counts known at plan time."
+  type        = bool
+  default     = true
+}
+
+variable "log_analytics_workspace_id" {
+  description = "Workspace for diagnostics. Required when enable_diagnostics is true."
+  type        = string
+  default     = ""
+}
