@@ -304,6 +304,92 @@ variable "pipeline_principal_ids" {
 }
 
 # -----------------------------------------------------------------------------
+# Self-hosted Pipeline Agent Variables
+# -----------------------------------------------------------------------------
+
+variable "enable_pipeline_agent_vm" {
+  description = "Provision the self-hosted Azure Pipelines agent VM in rg_infra. Disable if agent infrastructure is managed elsewhere."
+  type        = bool
+  default     = true
+}
+
+variable "agent_vm_size" {
+  description = "VM size for the self-hosted agent."
+  type        = string
+  default     = "Standard_D4s_v5"
+}
+
+variable "agent_admin_username" {
+  description = "Local admin username on the agent VM. Day-to-day access is via Entra ID login (AADSSHLoginForLinux), not this account."
+  type        = string
+  default     = "azureagent"
+}
+
+variable "agent_admin_ssh_public_key" {
+  description = "SSH public key for the agent VM's local admin account. Required by Azure for VM creation; keep the matching private key out of source control."
+  type        = string
+}
+
+variable "agent_pat_secret_name" {
+  description = "Name of the Key Vault secret holding the Azure DevOps agent pool PAT. Create the secret out-of-band (az keyvault secret set) - Terraform never writes its value."
+  type        = string
+  default     = "ado-agent-pat"
+}
+
+variable "devops_org_url" {
+  description = "Azure DevOps organisation URL, e.g. https://dev.azure.com/<org>."
+  type        = string
+}
+
+variable "agent_pool_name" {
+  description = "Agent pool the VM registers into. Must match privatePoolName in pipelines/variables/common.yml."
+  type        = string
+  default     = "private-selfhosted-linux"
+}
+
+variable "agent_package_version" {
+  description = "Azure Pipelines agent package version (vsts-agent-linux-x64)."
+  type        = string
+  default     = "4.248.0"
+}
+
+variable "agent_terraform_version" {
+  description = "Terraform version pre-installed on the agent. Keep in sync with pipelines/variables/common.yml terraformVersion."
+  type        = string
+  default     = "1.9.5"
+}
+
+variable "agent_helm_version" {
+  description = "Helm version pre-installed on the agent. Keep in sync with pipelines/variables/common.yml helmVersion."
+  type        = string
+  default     = "3.16.2"
+}
+
+variable "agent_kubectl_version" {
+  description = "kubectl version pre-installed on the agent. Keep in sync with pipelines/variables/common.yml kubectlVersion."
+  type        = string
+  default     = "1.30.5"
+}
+
+variable "agent_trivy_version" {
+  description = "Trivy version pre-installed on the agent. Keep in sync with the version pinned in pipelines/templates/stage-security.yml."
+  type        = string
+  default     = "0.58.1"
+}
+
+variable "agent_gitleaks_version" {
+  description = "Gitleaks version pre-installed on the agent. Keep in sync with the version pinned in pipelines/templates/stage-security.yml."
+  type        = string
+  default     = "8.21.2"
+}
+
+variable "agent_kubeconform_version" {
+  description = "kubeconform version pre-installed on the agent. Keep in sync with the version pinned in pipelines/templates/stage-validate.yml."
+  type        = string
+  default     = "0.6.7"
+}
+
+# -----------------------------------------------------------------------------
 # Identity Components Variables
 # -----------------------------------------------------------------------------
 

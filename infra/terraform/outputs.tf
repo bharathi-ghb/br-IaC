@@ -49,6 +49,16 @@ output "app_service_account_name" {
   value       = var.app_service_account_name
 }
 
+output "pipeline_agent_vm_name" {
+  description = "Name of the self-hosted pipeline agent VM, or null when not created."
+  value       = var.enable_pipeline_agent_vm ? module.pipeline_agent[0].vm_name : null
+}
+
+output "pipeline_agent_private_ip" {
+  description = "Private IP of the self-hosted pipeline agent VM, or null when not created."
+  value       = var.enable_pipeline_agent_vm ? module.pipeline_agent[0].private_ip_address : null
+}
+
 output "app_insights_connection_string" {
   description = "Application Insights connection string."
   value       = module.observability.app_insights_connection_string

@@ -89,3 +89,6 @@ alert_email_receivers = {
   team2 = "app@abc.com"
   team3 = "db@abc.com"
 }
+
+agent_admin_ssh_public_key = "ssh-ed25519 AAAA...replace-with-a-real-public-key... agent@prod"
+devops_org_url             = "https://dev.azure.com/example-bank"

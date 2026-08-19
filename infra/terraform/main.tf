@@ -234,6 +234,38 @@ module "identity" {
 }
 
 # ---------------------------------------------------------------------------
+# Self-hosted Azure Pipelines agent — Linux VM in rg_infra
+# ---------------------------------------------------------------------------
+
+module "pipeline_agent" {
+  count  = var.enable_pipeline_agent_vm ? 1 : 0
+  source = "../modules/pipeline-agent"
+
+  name                 = "vm-agent-${var.environment}-${var.name_prefix}"
+  resource_group_name  = azurerm_resource_group.rg_infra.name
+  location             = azurerm_resource_group.rg_infra.location
+  tags                 = azurerm_resource_group.rg_infra.tags
+  subnet_id            = module.network_spoke.pipeline_agent_subnet_id
+  vm_size              = var.agent_vm_size
+  admin_username       = var.agent_admin_username
+  admin_ssh_public_key = var.agent_admin_ssh_public_key
+  key_vault_id         = module.key_vault.id
+  key_vault_uri        = module.key_vault.vault_uri
+  pat_secret_name      = var.agent_pat_secret_name
+  devops_org_url       = var.devops_org_url
+  devops_pool_name     = var.agent_pool_name
+  agent_version        = var.agent_package_version
+  terraform_version   = var.agent_terraform_version
+  helm_version        = var.agent_helm_version
+  kubectl_version     = var.agent_kubectl_version
+  trivy_version       = var.agent_trivy_version
+  gitleaks_version    = var.agent_gitleaks_version
+  kubeconform_version = var.agent_kubeconform_version
+  enable_diagnostics  = true
+  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
+}
+
+# ---------------------------------------------------------------------------
 # Governance
 # ---------------------------------------------------------------------------
 module "governance" {
