@@ -62,10 +62,7 @@ stages:
                 export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                 terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                  -backend-config="resource_group_name=$(tfStateResourceGroup)" \
-                  -backend-config="storage_account_name=$(tfStateStorageAccount)" \
-                  -backend-config="container_name=$(tfStateContainer)" \
-                  -backend-config="use_azuread_auth=true"
+                  -backend-config="${TF_DIR}/azurerm.tfbackend"
 
                 set +e
                 terraform -chdir="${TF_DIR}" plan -input=false -no-color -lock-timeout=5m \
@@ -141,10 +138,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="resource_group_name=$(tfStateResourceGroup)" \
-                        -backend-config="storage_account_name=$(tfStateStorageAccount)" \
-                        -backend-config="container_name=$(tfStateContainer)" \
-                        -backend-config="use_azuread_auth=true"
+                        -backend-config="${TF_DIR}/azurerm.tfbackend"
 
                       cp "$(Pipeline.Workspace)/tfplan-${{ parameters.terraformEnv }}/tfplan.binary" \
                          "${TF_DIR}/tfplan.binary"
@@ -177,10 +171,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="resource_group_name=$(tfStateResourceGroup)" \
-                        -backend-config="storage_account_name=$(tfStateStorageAccount)" \
-                        -backend-config="container_name=$(tfStateContainer)" \
-                        -backend-config="use_azuread_auth=true"
+                        -backend-config="${TF_DIR}/azurerm.tfbackend"
 
                       mkdir -p "$(Build.ArtifactStagingDirectory)/tfout"
 

@@ -16,4 +16,4 @@ maintainers:
     email: platform-engineering@example.bank
 
 annotations:
-  source: https://non-prod.azure.com/example-bank/banking-platform
+  source: https://dev.azure.com/example-bank/banking-platform

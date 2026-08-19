@@ -44,7 +44,7 @@ stages:
                 customCommand: "init"
                 workingDirectory: "$(infraRoot)/environments/${{ env }}"
                 backendType: "selfConfigured"
-                commandOptions: "-backend-config=azurerm.tfbackend"
+                commandOptions: "-backend-config=$(infraRoot)/environments/${{ env }}/azurerm.tfbackend"
 
             - task: TerraformTaskV4@4
               displayName: "terraform validate (${{ env }})"
@@ -93,7 +93,7 @@ stages:
           - script: |
               set -euo pipefail
               mkdir -p "$(Build.ArtifactStagingDirectory)/rendered"
-              for overlay in non-prod prod; do
+              for overlay in nonprod prod; do
                 echo "==> rendering values-${overlay}.yaml"
                 helm template "$(helmRelease)" "$(chartPath)" \
                   --namespace "$(appNamespace)" \

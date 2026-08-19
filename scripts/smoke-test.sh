@@ -25,7 +25,7 @@ in_cluster() {
     --restart=Never \
     --rm -i \
     --quiet \
-    --command -- "$@" 2>/non-prod/null
+    --command -- "$@" 2>/dev/null
 }
 
 # -----------------------------------------------------------------------------
@@ -62,7 +62,7 @@ pass "served from: ${SOURCE}"
 info "3/5 Second call should be served from the Blob Storage cache"
 # -----------------------------------------------------------------------------
 sleep 3
-CACHE_HEADER="$(in_cluster curl -sS --max-time 30 -o /non-prod/null -D - "${BASE_URL}/api/shows" | grep -i '^x-cache:' | tr -d '\r' || true)"
+CACHE_HEADER="$(in_cluster curl -sS --max-time 30 -o /dev/null -D - "${BASE_URL}/api/shows" | grep -i '^x-cache:' | tr -d '\r' || true)"
 
 if printf '%s' "$CACHE_HEADER" | grep -qi 'HIT'; then
   pass "X-Cache: HIT - Blob Storage read/write via Workload Identity confirmed"
@@ -79,7 +79,7 @@ if [[ -n "$STORAGE_ACCOUNT" ]]; then
         --account-name "$STORAGE_ACCOUNT" \
         --container-name "$CONTAINER" \
         --auth-mode login \
-        --query "[].name" -o tsv 2>/non-prod/null | grep -q .; then
+        --query "[].name" -o tsv 2>/dev/null | grep -q .; then
     pass "cache container '${CONTAINER}' contains at least one blob"
   else
     echo "  [WARN] no blobs listed in '${CONTAINER}'." >&2

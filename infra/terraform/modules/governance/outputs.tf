@@ -9,6 +9,6 @@ output "assignment_ids" {
       azurerm_resource_group_policy_assignment.aks_no_privileged.id,
       azurerm_resource_group_policy_assignment.aks_no_privilege_escalation.id,
     ],
-    azurerm_resource_group_policy_assignment.required_tags[*].id
+    values(azurerm_resource_group_policy_assignment.required_tags)[*].id
   )
 }

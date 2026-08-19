@@ -1,6 +1,6 @@
 output "client_id" {
   description = "Client ID of the managed identity."
-  value       = azurerm_user_assigned_identity.identity
+  value       = azurerm_user_assigned_identity.identity.client_id
 }
 
 output "principal_id" {

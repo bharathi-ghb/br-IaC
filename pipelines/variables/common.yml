@@ -30,9 +30,9 @@ variables:
     value: "$(Build.BuildNumber)-$(Build.SourceVersion)"
 
   - name: tfStateResourceGroup
-    value: "rg-${var.environment}-${var.name_prefix}"
+    value: "rg-tfstate-iac"
   - name: tfStateStorageAccount
-    value: "sa${var.environment}01"
+    value: "satfstateiac001"
   - name: tfStateContainer
     value: "tfstate"
 
@@ -49,7 +49,7 @@ variables:
   - name: nonProdAcrName
     value: "acrnonprod"
   - name: prodAcrName
-    value: "acrnonprod"
+    value: "acrprod"
 
   - name: appNamespace
     value: "banking-application"

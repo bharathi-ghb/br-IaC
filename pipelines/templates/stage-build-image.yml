@@ -39,7 +39,7 @@ stages:
 
           - script: |
               set -euo pipefail
-              command -v trivy >/non-prod/null 2>&1 || \
+              command -v trivy >/dev/null 2>&1 || \
                 curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
                   | sh -s -- -b /usr/local/bin v0.58.1
 

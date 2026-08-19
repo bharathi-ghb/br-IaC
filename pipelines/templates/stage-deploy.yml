@@ -72,7 +72,7 @@ stages:
                         --name "${aks_cluster_name}" \
                         --overwrite-existing
 
-                      az aks install-cli --only-show-errors 2>/non-prod/null || true
+                      az aks install-cli --only-show-errors 2>/dev/null || true
                       kubelogin convert-kubeconfig -l azurecli
 
                       kubectl cluster-info
@@ -109,10 +109,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="resource_group_name=$(tfStateResourceGroup)" \
-                        -backend-config="storage_account_name=$(tfStateStorageAccount)" \
-                        -backend-config="container_name=$(tfStateContainer)" \
-                        -backend-config="use_azuread_auth=true" >/non-prod/null
+                        -backend-config="${TF_DIR}/azurerm.tfbackend" >/dev/null
 
                       kubectl create namespace "$(targetNamespace)" \
                         --dry-run=client -o yaml | kubectl apply -f -

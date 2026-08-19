@@ -80,7 +80,7 @@ resource "azurerm_role_assignment" "rbac" {
   for_each = toset(var.data_contributor_principal_ids)
 
   scope                = azurerm_storage_account.sa.id
-  role_definition_name = ["Storage Blob Data Contributor"]
+  role_definition_name = "Storage Blob Data Contributor"
   principal_id         = each.value
 }
 

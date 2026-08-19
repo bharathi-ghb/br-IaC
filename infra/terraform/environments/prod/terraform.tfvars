@@ -2,53 +2,65 @@ environment = "prod"
 
 name_prefix = "iac"
 
+hub_address_space              = "10.200.0.0/22"
+firewall_subnet_prefix         = "10.200.0.0/26"
+spoke_address_space            = "10.201.0.0/22"
+aks_subnet_prefix              = "10.201.0.0/24"
+private_endpoint_subnet_prefix = "10.201.1.0/24"
+pipeline_agent_subnet_prefix   = "10.201.2.0/26"
+
+firewall_name    = "fw-prod-iac"
+firewall_policy  = "fwpol-prod-iac"
+firewall_pip     = "pip-fw-prod-iac"
+route_table_name = "rt-prod-iac"
+
 nsg_rules_aks_nodes = [
   {
-    name                       = "allow-internal-https-in"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_ranges    = ["443", "8080"]
-    source_address_prefixes    = ["10.0.0.0/8"]
-    destination_address_prefix = [""]
+    name                          = "allow-internal-https-in"
+    priority                      = 100
+    direction                     = "Inbound"
+    access                        = "Allow"
+    protocol                      = "Tcp"
+    source_port_ranges            = ["*"]
+    destination_port_ranges       = ["443", "8080"]
+    source_address_prefixes       = ["10.0.0.0/8"]
+    destination_address_prefixes  = []
   },
   {
-    name                       = "deny-internet-in"
-    priority                   = 4000
-    direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
+    name                          = "deny-internet-in"
+    priority                      = 4000
+    direction                     = "Inbound"
+    access                        = "Deny"
+    protocol                      = "*"
+    source_port_ranges            = ["*"]
+    destination_port_ranges       = ["*"]
+    source_address_prefixes       = ["Internet"]
+    destination_address_prefixes  = ["*"]
   }
 ]
 
 nsg_rules_private_endpoints = [
   {
-    name                       = "allow-vnet-clients-in"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefixes    = compact([var.aks_subnet_prefix, var.pipeline_agent_subnet_prefix])
-    destination_address_prefix = var.private_endpoint_subnet_prefix
+    name                          = "allow-vnet-clients-in"
+    priority                      = 100
+    direction                     = "Inbound"
+    access                        = "Allow"
+    protocol                      = "Tcp"
+    source_port_ranges            = ["*"]
+    destination_port_ranges       = ["443"]
+    source_address_prefixes       = ["10.201.0.0/24", "10.201.2.0/26"]
+    destination_address_prefixes  = ["10.201.1.0/24"]
   },
   {
-    name                       = "deny-internet-in"
-    priority                   = 4000
-    direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
+    name                          = "deny-internet-in"
+    priority                      = 4000
+    direction                     = "Inbound"
+    access                        = "Deny"
+    protocol                      = "*"
+    source_port_ranges            = ["*"]
+    destination_port_ranges       = ["*"]
+    source_address_prefixes       = ["Internet"]
+    destination_address_prefixes  = ["*"]
   }
 ]
 

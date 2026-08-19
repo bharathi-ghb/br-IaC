@@ -58,6 +58,7 @@ module "network_hub" {
   location                = azurerm_resource_group.rg_hub.location
   resource_group_name     = azurerm_resource_group.rg_hub.name
   tags                    = azurerm_resource_group.rg_hub.tags
+  environment             = var.environment
   hub_vnet_name           = "vnet-hub-${var.environment}"
   hub_address_space       = var.hub_address_space
   firewall_subnet_prefix  = var.firewall_subnet_prefix
@@ -79,6 +80,7 @@ module "network_spoke" {
   resource_group_name            = azurerm_resource_group.rg_infra.name
   location                       = azurerm_resource_group.rg_infra.location
   tags                           = azurerm_resource_group.rg_infra.tags
+  environment                    = var.environment
   spoke_vnet_name                = "vnet-spoke-${var.environment}"
   spoke_address_space            = var.spoke_address_space
   aks_subnet_prefix              = var.aks_subnet_prefix
@@ -121,12 +123,12 @@ module "acr" {
   name                      = "acr${var.environment}"
   resource_group_name        = azurerm_resource_group.rg_infra.name
   location                   = azurerm_resource_group.rg_infra.location
+  environment                 = var.environment
   tags                       = azurerm_resource_group.rg_infra.tags
   private_endpoint_subnet_id = module.network_spoke.private_endpoint_subnet_id
   private_dns_zone_id        = module.private_dns.zone_ids["privatelink.azurecr.io"]
-  pull_principal_ids         = ""
-  push_principal_ids         = ""
-  untagged_retention_days    = ""
+  pull_principal_ids         = [module.aks.kubelet_identity_object_id]
+  push_principal_ids         = var.pipeline_principal_ids
   enable_diagnostics         = true
   log_analytics_workspace_id = module.observability.log_analytics_workspace_id
 }
@@ -149,7 +151,6 @@ module "storage" {
   private_endpoint_subnet_id     = module.network_spoke.private_endpoint_subnet_id
   blob_private_dns_zone_id       = module.private_dns.zone_ids["privatelink.blob.core.windows.net"]
   blob_private_dns_zone_name     = module.private_dns.zone_names["privatelink.blob.core.windows.net"]
-  data_contributor_principal_ids = ""
   enable_diagnostics             = true
   log_analytics_workspace_id     = module.observability.log_analytics_workspace_id
 }
@@ -169,8 +170,8 @@ module "key_vault" {
   private_endpoint_subnet_id    = module.network_spoke.private_endpoint_subnet_id
   private_dns_zone_id           = module.private_dns.zone_ids["privatelink.vaultcore.azure.net"]
   private_dns_zone_name         = module.private_dns.zone_names["privatelink.vaultcore.azure.net"]
-  secrets_user_principal_ids    = ""
-  secrets_officer_principal_ids = ""
+  secrets_user_principal_ids    = var.pipeline_principal_ids
+  secrets_officer_principal_ids = var.kv_admin_group_object_ids
   enable_diagnostics            = true
   log_analytics_workspace_id    = module.observability.log_analytics_workspace_id
 }
