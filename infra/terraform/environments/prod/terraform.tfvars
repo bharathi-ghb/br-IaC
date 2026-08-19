@@ -60,3 +60,20 @@ tags = {
   owner     = "abn-amro"
   environment = "prod"
 }
+
+private_dns_zones = [
+  "privatelink.blob.core.windows.net",
+  "privatelink.vaultcore.azure.net",
+  "privatelink.azurecr.io",
+  "privatelink.monitor.azure.com",
+  "privatelink.ods.opinsights.azure.com",
+  "privatelink.oms.opinsights.azure.com",
+  "privatelink.agentsvc.azure-automation.net",
+  "privatelink.westeurope.azmk8s.io"
+]
+
+alert_email_receivers = {
+  team1 = "xyz@abc.com"
+  team2 = "app@abc.com"
+  team3 = "db@abc.com"
+}

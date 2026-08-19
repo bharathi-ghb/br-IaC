@@ -43,6 +43,64 @@ resource "azurerm_firewall_policy" "fwp" {
   }
 }
 
+resource "azurerm_firewall_policy_rule_collection_group" "egress" {
+  count = var.enable_firewall ? 1 : 0
+
+  name               = "egress-rules"
+  firewall_policy_id = azurerm_firewall_policy.fwp[0].id
+  priority           = 500
+
+  application_rule_collection {
+    name     = "allow-workload-egress"
+    priority = 100
+    action   = "Allow"
+
+    rule {
+      name             = "tvmaze-api"
+      source_addresses = var.spoke_address_spaces
+      destination_fqdns = var.allowed_egress_fqdns
+      protocols {
+        type = "Https"
+        port = 443
+      }
+    }
+  }
+
+  application_rule_collection {
+    name     = "allow-aks-platform"
+    priority = 200
+    action   = "Allow"
+
+    rule {
+      name             = "aks-service-tags"
+      source_addresses = var.spoke_address_spaces
+      destination_fqdn_tags = ["AzureKubernetesService"]
+    }
+  }
+
+  network_rule_collection {
+    name     = "allow-aks-network"
+    priority = 300
+    action   = "Allow"
+
+    rule {
+      name                  = "ntp"
+      source_addresses      = var.spoke_address_spaces
+      destination_addresses = ["*"]
+      destination_ports     = ["123"]
+      protocols             = ["UDP"]
+    }
+
+    rule {
+      name                  = "azure-control-plane"
+      source_addresses      = var.spoke_address_spaces
+      destination_addresses = ["AzureCloud.${var.location}"]
+      destination_ports     = ["443", "1194", "9000"]
+      protocols             = ["TCP", "UDP"]
+    }
+  }
+}
+
 resource "azurerm_firewall" "fw" {
   name                = "fw-hub-${var.environment}"
   resource_group_name = var.resource_group_name
