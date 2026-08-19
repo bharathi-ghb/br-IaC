@@ -1,0 +1,39 @@
+# =============================================================================
+# Production overlay
+# =============================================================================
+
+replicaCount: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 65
+  targetMemoryUtilizationPercentage: 75
+
+config:
+  logLevel: info
+  cacheTtlSeconds: 3600
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+topologySpreadEnabled: true
+
+nodeSelector:
+  workload: application
+
+service:
+  internalLoadBalancer:
+    enabled: true
+
+commonLabels:
+  environment: prod

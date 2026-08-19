@@ -1,0 +1,19 @@
+# =============================================================================
+# ConfigMap
+
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "banking-application.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "banking-application.labels" . | nindent 4 }}
+data:
+  APP_ENVIRONMENT: {{ .Release.Namespace | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  STORAGE_ACCOUNT_NAME: {{ .Values.config.storageAccountName | quote }}
+  CACHE_CONTAINER: {{ .Values.config.cacheContainer | quote }}
+  CACHE_TTL_SECONDS: {{ .Values.config.cacheTtlSeconds | quote }}
+  TVMAZE_BASE_URL: {{ .Values.config.tvmazeBaseUrl | quote }}
+  UPSTREAM_TIMEOUT_MS: {{ .Values.config.upstreamTimeoutMs | quote }}
