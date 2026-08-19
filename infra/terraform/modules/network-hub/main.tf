@@ -19,6 +19,10 @@ resource "azurerm_subnet" "firewall" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.hub_vnet.name
   address_prefixes     = [var.firewall_subnet_prefix]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_public_ip" "firewall" {

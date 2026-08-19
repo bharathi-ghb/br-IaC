@@ -58,6 +58,10 @@ resource "azurerm_subnet" "aks_nodes" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.spoke_vnet.name
   address_prefixes     = [var.aks_subnet_prefix]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -128,6 +132,10 @@ resource "azurerm_subnet" "private_endpoints" {
   address_prefixes     = [var.private_endpoint_subnet_prefix]
   private_endpoint_network_policies = "Enabled"
   private_link_service_network_policies_enabled = false
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_network_security_group" "private_endpoints" {
@@ -196,6 +204,10 @@ resource "azurerm_subnet" "pipeline_agents" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.spoke_vnet.name
   address_prefixes     = [var.pipeline_agent_subnet_prefix]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_network_security_group" "pipeline_agents" {

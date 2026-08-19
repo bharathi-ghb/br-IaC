@@ -17,6 +17,10 @@ resource "azurerm_container_registry" "acr" {
   identity {
     type = "SystemAssigned"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_private_endpoint" "acr" {

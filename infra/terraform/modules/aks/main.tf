@@ -7,6 +7,10 @@ resource "azurerm_user_assigned_identity" "aks_identity" {
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "azurerm_role_assignment" "aks_role_assignment_subnet" {
@@ -113,6 +117,7 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
   }
 
   lifecycle {
+    prevent_destroy = true
     ignore_changes = [
       default_node_pool[0].node_count,
     ]

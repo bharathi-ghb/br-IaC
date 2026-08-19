@@ -13,6 +13,10 @@ resource "azurerm_log_analytics_workspace" "law" {
   internet_ingestion_enabled   = var.enable_private_link
   internet_query_enabled       = var.allow_public_query
   daily_quota_gb               = var.daily_quota_gb
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_application_insights" "appi" {

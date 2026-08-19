@@ -12,12 +12,20 @@ resource "azurerm_resource_group" "rg_infra" {
   name     = "rg-${var.environment}-${var.name_prefix}"
   location = var.location
   tags     = var.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_resource_group" "rg_hub" {
   name     = "rg-${var.environment}-${var.name_prefix}-hub"
   location = var.location
   tags     = var.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # -----------------------------------------------------------------------------

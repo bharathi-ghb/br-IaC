@@ -35,6 +35,10 @@ resource "azurerm_storage_account" "sa" {
     default_action = "Deny"
     bypass         = ["AzureServices"]
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_storage_container" "cache" {
