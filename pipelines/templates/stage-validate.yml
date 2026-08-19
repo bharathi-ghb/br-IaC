@@ -1,0 +1,145 @@
+# =============================================================================
+# Validate Stage
+# =============================================================================
+parameters:
+  - name: poolName
+    type: string
+  - name: environments
+    type: object
+    default:
+      - nonprod
+      - prod
+
+stages:
+  - stage: Validate
+    displayName: "CI - format, validate and lint"
+    jobs:
+      - job: TerraformValidate
+        displayName: "Terraform fmt, validate, tflint"
+        pool:
+          name: ${{ parameters.poolName }}
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: "Install Terraform $(terraformVersion)"
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: TerraformTaskV4@4
+            displayName: "terraform fmt -check"
+            inputs:
+              provider: "azurerm"
+              command: "custom"
+              customCommand: "fmt"
+              commandOptions: "-check -recursive -diff"
+              workingDirectory: "$(infraRoot)"
+
+          - ${{ each env in parameters.environments }}:
+            - task: TerraformTaskV4@4
+              displayName: "terraform init (${{ env }})"
+              inputs:
+                provider: "azurerm"
+                command: "custom"
+                customCommand: "init"
+                workingDirectory: "$(infraRoot)/environments/${{ env }}"
+                backendType: "selfConfigured"
+                commandOptions: "-backend-config=azurerm.tfbackend"
+
+            - task: TerraformTaskV4@4
+              displayName: "terraform validate (${{ env }})"
+              inputs:
+                provider: "azurerm"
+                command: "custom"
+                customCommand: "validate"
+                workingDirectory: "$(infraRoot)/environments/${{ env }}"
+                commandOptions: "-no-color"
+
+          - script: |
+              set -euo pipefail
+              curl -sSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+              tflint --version
+            displayName: "Install tflint"
+
+          - script: |
+              set -euo pipefail
+              tflint --init
+              tflint --chdir="$(infraRoot)" --recursive --format compact
+            displayName: "tflint"
+
+      - job: HelmValidate
+        displayName: "Helm lint and template render"
+        pool:
+          name: ${{ parameters.poolName }}
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - task: HelmInstaller@1
+            displayName: "Install Helm $(helmVersion)"
+            inputs:
+              helmVersionToInstall: $(helmVersion)
+
+          - script: |
+              set -euo pipefail
+              helm lint "$(chartPath)" \
+                --values "$(chartPath)/values-nonprod.yaml" \
+                --set image.registry=validation.azurecr.io \
+                --set image.tag=ci \
+                --set config.storageAccountName=validationsa \
+                --set workloadIdentity.clientId=00000000-0000-0000-0000-000000000000
+            displayName: "helm lint"
+
+          - script: |
+              set -euo pipefail
+              mkdir -p "$(Build.ArtifactStagingDirectory)/rendered"
+              for overlay in non-prod prod; do
+                echo "==> rendering values-${overlay}.yaml"
+                helm template "$(helmRelease)" "$(chartPath)" \
+                  --namespace "$(appNamespace)" \
+                  --values "$(chartPath)/values-${overlay}.yaml" \
+                  --set image.registry=validation.azurecr.io \
+                  --set image.tag=ci \
+                  --set config.storageAccountName=validationsa \
+                  --set workloadIdentity.clientId=00000000-0000-0000-0000-000000000000 \
+                  > "$(Build.ArtifactStagingDirectory)/rendered/${overlay}.yaml"
+              done
+            displayName: "helm template (non-prod and prod)"
+
+          - script: |
+              set -euo pipefail
+              curl -sSLo /tmp/kubeconform.tar.gz \
+                https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+              tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+              /tmp/kubeconform -strict -summary -kubernetes-version 1.30.0 \
+                "$(Build.ArtifactStagingDirectory)/rendered/"*.yaml
+            displayName: "kubeconform - validate rendered manifests"
+
+          - publish: "$(Build.ArtifactStagingDirectory)/rendered"
+            artifact: rendered-manifests
+            displayName: "Publish rendered manifests"
+
+      - job: AppValidate
+        displayName: "Application lint and unit tests"
+        pool:
+          name: ${{ parameters.poolName }}
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - task: NodeTool@0
+            displayName: "Install Node.js 22"
+            inputs:
+              versionSpec: "22.x"
+
+          - script: |
+              set -euo pipefail
+              cd "$(appPath)"
+              npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+            displayName: "npm install"
+
+          - script: |
+              set -euo pipefail
+              cd "$(appPath)"
+              npx eslint src || echo "##vso[task.logissue type=warning]eslint reported issues"
+            displayName: "eslint"
