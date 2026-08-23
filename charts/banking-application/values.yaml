@@ -1,4 +1,24 @@
 
+# =============================================================================
+# BASE VALUES - the safe, conservative default. Environment overlays
+# (values-nonprod.yaml / values-prod.yaml) override only what differs.
+#
+# WHY OVERLAYS RATHER THAN SEPARATE CHARTS: separate charts DRIFT. Two template sets
+# diverge silently until production behaves differently from the thing you tested. One
+# chart plus two small values files means every environmental difference is visible in a
+# short, reviewable diff.
+#
+# WHY HELM RATHER THAN KUSTOMIZE: release semantics. helm history, helm rollback,
+# helm status and --atomic give a versioned, revertible unit of deployment. Kustomize
+# has no concept of a release, so rollback is 'find the old YAML and re-apply it and
+# hope'. Since rollback is an explicit requirement, that decided it.
+#
+# ANYTHING INFRASTRUCTURE-DERIVED IS DELIBERATELY EMPTY HERE and injected by the
+# pipeline with --set from TERRAFORM OUTPUTS: image.registry, image.tag,
+# workloadIdentity.clientId, config.storageAccountName, serviceAccount.name. Nothing
+# environment-specific is hardcoded, and nothing sensitive is ever in a values file.
+# =============================================================================
+
 # --- Image -------------------------------------------------------------------
 image:
   registry: ""
@@ -18,10 +38,29 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 
 
+# WORKLOAD IDENTITY. clientId is injected from the Terraform output
+# workload_identity_client_id. The _helpers.tpl validateValues guard FAILS THE RENDER if
+# enabled is true and clientId is empty - turning a silent runtime auth failure into a
+# loud deploy-time error.
+#
+# IMPROVEMENT WORTH MAKING (docs/02 P0-6): add an expectedSubject value, also from a
+# Terraform output, and have the guard assert that
+# "system:serviceaccount:<Release.Namespace>:<serviceAccountName>" matches the federated
+# credential's subject exactly. That makes AADSTS70021 - the most common Workload
+# Identity failure - structurally impossible rather than merely unlikely.
 workloadIdentity:
   enabled: true
   clientId: ""
 
+# KNOWN DEFECT (docs/02 P0-6): this default says 'banking-application' while
+# infra/terraform/variables.tf says 'banking-api'. The federated identity credential's
+# subject is an EXACT string match, so a disagreement produces AADSTS70021.
+#
+# The pipeline DOES override this correctly from the Terraform output
+# (--set serviceAccount.name="$(serviceAccountName)"), so the default is what is wrong.
+# The fix is to set this to "" so it can never silently disagree - with create: true the
+# helper falls back to the release fullname, and the pipeline always supplies the real
+# value.
 serviceAccount:
   create: true
   name: banking-application
@@ -48,6 +87,21 @@ service:
     enabled: false
     subnet: ""
 
+# MEMORY LIMIT, NO CPU LIMIT. This is DELIBERATE and a junior reviewer will try to
+# 'fix' it.
+#
+# CPU is compressible; memory is not. A CPU limit causes CFS throttling - your p99
+# latency spikes even when the node has idle cores, because the container is throttled
+# against a quota rather than against real contention. A memory limit is what stops one
+# pod OOM-killing the node.
+#
+# So: always set both requests, always set a memory limit, and set a CPU limit only when
+# you need hard multi-tenant isolation or Guaranteed QoS.
+#
+# NUANCE: with requests.memory != limits.memory the pod is BURSTABLE QoS, so it is
+# evicted before Guaranteed pods under node memory pressure. For a production banking
+# API you may prefer requests.memory == limits.memory to get Guaranteed QoS while STILL
+# omitting the CPU limit - the best of both.
 resources:
   requests:
     cpu: 100m
@@ -55,6 +109,26 @@ resources:
   limits:
     memory: 512Mi
 
+# THREE PROBES, THREE DIFFERENT QUESTIONS. This distinction is the single most common
+# Kubernetes interview question.
+#
+#   liveness  /healthz - 'should Kubernetes RESTART this process?'
+#       Deliberately touches NO dependency. A Storage outage must not cause Kubernetes to
+#       kill every healthy pod and turn a partial outage into a total one. Putting a
+#       dependency check in a liveness probe is how a downstream blip becomes a
+#       cluster-wide crashloop.
+#
+#   readiness /readyz  - 'should this pod receive TRAFFIC?'
+#       DOES check Blob Storage, so a pod with broken Workload Identity is pulled out of
+#       the Service endpoint list instead of serving errors.
+#       TRADE-OFF: a global Storage outage takes every pod NotReady at once and the
+#       Service has no endpoints. Mitigate with a tolerant failureThreshold and, ideally,
+#       a readiness that accepts 'degraded but serving stale cache'.
+#
+#   startup  /healthz - 'has it finished starting yet?'
+#       Suspends liveness during startup, so a slow start is not misread as a hang.
+#       12 x 5s = 60s grace. Without it you either set initialDelaySeconds generously -
+#       delaying detection of real hangs forever after - or you accept restart loops.
 probes:
   liveness:
     path: /healthz
@@ -99,6 +173,24 @@ containerSecurityContext:
     drop:
       - ALL
 
+# NETWORK POLICY - enforced by Calico (network_policy = "calico" on the cluster).
+#
+# The egress rules implement defence in depth INSIDE the cluster, complementing the
+# firewall's control at the subnet edge:
+#   - DNS to kube-system only
+#   - 443 to the VNet (allowedEgressCidrs) for the private endpoints
+#   - 443 to the internet EXCEPT RFC1918 and, critically, 169.254.169.254/32
+#
+# THAT LAST EXCEPTION IS THE IMPORTANT ONE: blocking IMDS stops a compromised container
+# stealing the NODE's managed identity credentials. It is textbook SSRF and
+# credential-theft hardening, and worth calling out explicitly - it is a strong signal
+# that the policy was reasoned about rather than copied.
+#
+# KNOWN DEFECT (docs/02 P2-5): the INGRESS rule in networkpolicy.yaml has 'ports' but no
+# 'from' selector, which permits ANY source to reach that port. It should be scoped to
+# the node subnet (internal LB), the Azure health probe source 168.63.129.16/32, and any
+# ingress controller. Miss the health-probe source and the internal load balancer marks
+# every backend down - a fun, hard-to-diagnose outage.
 networkPolicy:
   enabled: true
   allowedEgressCidrs:

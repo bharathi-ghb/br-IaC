@@ -8,6 +8,10 @@ output "name" {
   value       = azurerm_kubernetes_cluster.aks_cluster.name
 }
 
+# The issuer URL is the trust anchor for Workload Identity: modules/identity uses it as
+# the 'issuer' on the federated identity credential, and Entra fetches this URL's JWKS
+# to verify the signature on the pod's projected token. It is public and
+# unauthenticated, which is fine - it contains only public keys.
 output "oidc_issuer_url" {
   description = "OIDC issuer URL. Used as the issuer when creating federated identity credentials for Workload Identity."
   value       = azurerm_kubernetes_cluster.aks_cluster.oidc_issuer_url

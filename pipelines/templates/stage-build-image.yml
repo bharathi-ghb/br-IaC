@@ -12,6 +12,37 @@ parameters:
   - name: acrName
     type: string
 
+# BUILD IMAGE - build, scan, then push to a PRIVATE registry using a NON-SECRET auth
+# pattern.
+#
+# "az acr login" is the key line. It exchanges the current Entra access token for a
+# short-lived ACR REFRESH TOKEN and writes that into the Docker config. There is no
+# password anywhere - not in a variable, not in a variable group, not on disk beyond a
+# short-lived token file. The alternative would be "docker login -u -p" with the ACR
+# ADMIN account, which is exactly what admin_enabled = false disables: a shared,
+# unattributable credential whose rotation breaks every consumer at once.
+#
+# The scan runs BEFORE the push, so a vulnerable image never reaches the registry at
+# all. --ignore-unfixed means it fails only on vulnerabilities that actually have a fix.
+#
+# OCI LABELS record the commit, source repo, build time and version, so any running
+# container can be traced back to the exact source revision that produced it - the
+# minimum viable provenance.
+#
+# KNOWN DEFECT (docs/02 P0-1): $(appPath) is empty - there is no Dockerfile - so this
+# stage cannot run.
+#
+# KNOWN DEFECT (docs/02 P1-6): this pushes ONLY to the non-prod registry, but the prod
+# deploy pulls from acrprod. Fix with an "az acr import" promotion step BY DIGEST after
+# prod approval - a server-side copy that preserves the exact bitstream.
+#
+# WHAT IS MISSING, AND MATTERS (docs/10): SIGNING. Scanning tells me the artifact was
+# clean WHEN I LOOKED AT IT. It says nothing about whether that is the artifact that got
+# deployed - anyone with AcrPush could overwrite the tag. The answer is "cosign sign"
+# keyless with this pipeline's OIDC identity, plus RATIFY as a Gatekeeper external data
+# provider so the CLUSTER rejects any unsigned image. And deploy by DIGEST, not tag, so
+# "the same release" always means the same bits.
+
 stages:
   - stage: BuildImage
     displayName: "CI - build, scan and push image"

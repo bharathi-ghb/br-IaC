@@ -2,6 +2,29 @@
 # ConfigMap
 
 # =============================================================================
+{{/*
+CONFIGMAP - the twelve-factor config surface, and the CONTRACT with the application.
+
+Every key here is an environment variable the app reads at startup:
+  STORAGE_ACCOUNT_NAME  - from the Terraform output, never hardcoded
+  CACHE_CONTAINER       - from the Terraform output
+  CACHE_TTL_SECONDS     - 60 in non-prod so cache behaviour is observable while
+                          testing; 3600 in prod
+  TVMAZE_BASE_URL       - the one external dependency, and the FQDN that must match
+                          the Azure Firewall application rule
+  UPSTREAM_TIMEOUT_MS   - a hung upstream must not exhaust the connection pool and
+                          cascade into a total outage
+
+NOTHING SECRET IS IN HERE, and nothing secret ever should be. STORAGE_ACCOUNT_NAME is
+not a secret - access to the account is governed by Entra RBAC, not by knowing its
+name. If a real secret is ever needed, the answer is the Key Vault CSI driver (which
+the cluster already enables with 2-minute rotation), not a Kubernetes Secret: a
+Secret is base64 in etcd, NOT encrypted unless KMS etcd encryption is on, and is
+readable by anyone with "get secrets" in the namespace.
+
+Changing any value here changes the checksum/config annotation on the Deployment,
+which triggers a rolling restart - so config changes actually take effect.
+*/}}
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -2,6 +2,25 @@
 # Production overlay
 # =============================================================================
 
+# WHAT DIFFERS IN PRODUCTION, and why each one:
+#
+#   replicaCount 3 + HPA 3-12   - survives losing one pod AND one zone simultaneously
+#   PDB minAvailable 2          - node drains can only take one pod at a time
+#   topologySpreadEnabled       - spread across availability zones
+#   nodeSelector workload=application - pins to the user node pool, so the API can
+#                                 never land on a system node and compete with CoreDNS
+#   internalLoadBalancer        - a private LB with no public IP (the annotation in
+#                                 service.yaml is what keeps it private)
+#   cacheTtlSeconds 3600        - one hour; non-prod uses 60s so cache behaviour is
+#                                 observable during testing
+#   logLevel info               - debug logging in production is a cost and a data-
+#                                 leakage risk
+#
+# WHAT DOES NOT DIFFER, AND SHOULD (docs/02 P2-9): the INFRASTRUCTURE tfvars are
+# near-identical between environments. Production still gets LRS storage, Log Analytics
+# retention of 90 days, Gatekeeper policies in Audit rather than Deny, and a single
+# pipeline agent VM. The application overlay is well differentiated; the platform is not.
+
 replicaCount: 3
 
 autoscaling:

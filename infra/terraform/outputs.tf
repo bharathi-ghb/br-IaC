@@ -1,4 +1,19 @@
 
+# OUTPUTS - the contract between Terraform and the deployment pipeline.
+#
+# stage-terraform.yml reads these into an outputs.env artifact, and stage-deploy.yml
+# sources it and passes the values to helm with --set. That is what makes the Helm
+# chart environment-agnostic: nothing infrastructure-derived is hardcoded in a values
+# file. It is also the correct fix for the namespace/ServiceAccount mismatch
+# (docs/02 P0-6) - the pipeline already reads app_namespace and
+# app_service_account_name from here, so Terraform is the single source of truth and
+# the chart defaults are simply wrong.
+#
+# app_insights_connection_string is marked sensitive so it is redacted from logs.
+# Note though (docs/02 P2-3): with local_authentication_enabled = false on App
+# Insights, the ingestion key inside that string is INERT - so it is arguably not a
+# secret at all, and the Kubernetes Secret the pipeline builds from it is unnecessary.
+
 output "firewall_public_ip" {
   description = "The platform's single egress IP address."
   value       = module.network_hub.firewall_public_ip

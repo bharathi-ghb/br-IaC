@@ -2,6 +2,22 @@
 # Self-hosted Azure Pipelines agent — Linux VM in rg_infra
 # ---------------------------------------------------------------------------
 
+# THE AGENT VM'S OWN IDENTITY - deliberately almost powerless.
+#
+# Its ONLY permission is Key Vault Secrets User (below), so it can read its own
+# registration PAT at boot and do NOTHING else. It cannot deploy, cannot reach ACR as
+# itself, cannot touch AKS.
+#
+# The DEPLOYMENT identity is entirely separate: the Azure DevOps service connection,
+# which uses workload identity federation and therefore has NO stored secret at all.
+# That separation is the point - compromising this host yields a PAT scoped to agent
+# pools, not a path into the subscription.
+#
+# HONEST RESIDUAL RISK worth volunteering: an attacker on this host would also get the
+# currently-running job's OIDC token for its lifetime, and the azdevops user is in the
+# docker group, which is root-equivalent. That is the argument for ephemeral, per-job
+# agents - which removes the long-lived host, the PAT, and cross-build state leakage in
+# a single change.
 resource "azurerm_user_assigned_identity" "agent" {
   name                = "id-${var.name}"
   resource_group_name = var.resource_group_name
@@ -15,6 +31,15 @@ resource "azurerm_role_assignment" "agent_kv_secrets_user" {
   principal_id         = azurerm_user_assigned_identity.agent.principal_id
 }
 
+# NO PUBLIC IP. Note there is no azurerm_public_ip resource anywhere in this module.
+#
+# The agent does not need one: its connection to Azure DevOps is AGENT-INITIATED
+# OUTBOUND LONG-POLLING on 443. Azure DevOps never dials in, so there is no inbound
+# rule and no listener to attack.
+#
+# Administrative access is via 'az ssh vm' using the AADSSHLoginForLinux extension
+# below - so SSH is governed by Entra Conditional Access and MFA rather than by a key
+# file sitting on someone's laptop.
 resource "azurerm_network_interface" "agent" {
   name                = "nic-${var.name}"
   resource_group_name = var.resource_group_name
@@ -32,6 +57,22 @@ resource "azurerm_network_interface" "agent" {
 # Virtual machine
 # ---------------------------------------------------------------------------
 
+# THE AGENT VM. This exists because of the assessment's explicit 'pipeline networking
+# requirement': Microsoft-hosted agents cannot reach a private endpoint. They run in
+# Microsoft's network with no route to snet-private-endpoints and no link to our private
+# DNS zones, so acr*.azurecr.io resolves to a public IP and the connection is refused.
+#
+# disable_password_authentication = true - key-based only, and even then the intended
+# path is Entra SSH login rather than the local admin account.
+#
+# ignore_changes = [custom_data] - cloud-init only runs on FIRST boot, so changing the
+# template would show a perpetual diff and, worse, tempt a replacement that silently
+# re-registers the agent. Version changes should go through a rebuilt image instead.
+#
+# KNOWN GAP (docs/02 P2-10): this is a SINGLE VM with availability_zone defaulting to
+# null. If it dies you cannot deploy OR roll back - precisely when you most need to.
+# In order of preference the fix is: a VMSS across zones, Azure DevOps Managed DevOps
+# Pools, or KEDA-scaled agent PODS in AKS with Workload Identity and no PAT at all.
 resource "azurerm_linux_virtual_machine" "agent" {
   name                = var.name
   resource_group_name = var.resource_group_name

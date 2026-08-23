@@ -2,6 +2,25 @@
 # Pipeline variables
 # =============================================================================
 
+# SHARED PIPELINE VARIABLES. Note what is NOT here: no secrets, no connection strings,
+# no keys. The service connections below authenticate with WORKLOAD IDENTITY FEDERATION,
+# so there is no client secret anywhere in Azure DevOps - the OIDC token is minted per
+# run and lives for minutes.
+#
+# Tool versions are pinned and are deliberately kept IN SYNC with the versions baked
+# into the agent image by modules/pipeline-agent. That duplication is itself a smell
+# (docs/02 P2-13): the pipeline should VERIFY these tools exist and fail loudly if the
+# agent image has drifted, rather than reinstalling them on every run.
+#
+# KNOWN DEFECT (docs/02 P0-6): appNamespace is hardcoded to "banking-application" while
+# infra/terraform/variables.tf defaults to "banking-api". The deploy stage correctly
+# overrides it from the Terraform output app_namespace, so this value is effectively
+# dead - but a dead variable that LOOKS live is dangerous. Delete it, or comment it as
+# informational only.
+#
+# KNOWN DEFECT (docs/02 P1-7): imageTag interpolates $(Build.BuildNumber), which the
+# root pipeline's "name:" field sets to a string containing SPACES - an illegal OCI tag.
+
 variables:
 
   - name: ciPoolName

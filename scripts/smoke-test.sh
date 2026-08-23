@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# Shebang added - see docs/02 P1-12. The pipeline currently works around its absence
+# with a runtime "chmod +x"; commit the executable bit instead.
 # =============================================================================
 # Smoke test - GET /api/shows and Azure integrations behind it
 # =============================================================================
@@ -13,6 +16,36 @@ TIMEOUT="${TIMEOUT:-300s}"
 
 SERVICE="${RELEASE}"
 BASE_URL="http://${SERVICE}.${NAMESPACE}.svc.cluster.local"
+
+# WHAT THIS TEST ACTUALLY PROVES, and why each step is here.
+#
+# This is the release gate: if it fails, stage-deploy.yml rolls the Helm release back.
+# So each assertion needs to be worth blocking a deployment for.
+#
+#   1. rollout status        - pods reached Ready. Fails fast with pod events on error,
+#                              which is the context you need rather than just "timeout".
+#   2. GET /api/shows == 200 - the API serves at all.
+#   3. SECOND CALL IS A CACHE HIT - this is the most valuable assertion in the file.
+#      An X-Cache: HIT on the second call proves the pod could WRITE to Blob Storage on
+#      the first call and READ from it on the second - which means the whole Workload
+#      Identity chain works end to end: token projection, federated credential subject
+#      match, Entra token exchange, AND the Storage RBAC role assignment. One header
+#      validates five separate pieces of configuration.
+#   4. blob exists           - a control-plane cross-check from outside the cluster.
+#   5. /readyz               - the app's own dependency report.
+#
+# TESTS RUN FROM INSIDE THE CLUSTER (via kubectl run) because the Service is ClusterIP /
+# internal-LB only. There is no public endpoint to curl - which is the point.
+#
+# NOTE THE SELF-DOCUMENTING FAILURE MESSAGE at step 4: it tells the operator the agent
+# may lack "Storage Blob Data Reader". That role assignment is never actually made by
+# the Terraform (docs/02 P0-5) - the script documents a grant the IaC does not create.
+#
+# IMPROVEMENT (docs/02 P2-8): package this as a HELM TEST hook
+# (templates/tests/test-api.yaml with helm.sh/hook: test). Then the acceptance criteria
+# are versioned WITH the chart, so a rollback to revision N also restores that
+# revision's definition of "healthy". A release and its acceptance criteria should never
+# drift apart.
 
 pass() { printf '  [PASS] %s\n' "$1"; }
 fail() { printf '  [FAIL] %s\n' "$1" >&2; exit 1; }

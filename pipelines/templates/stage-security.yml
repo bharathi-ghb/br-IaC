@@ -8,6 +8,43 @@ parameters:
     type: object
     default: []
 
+# SECURITY - runs BEFORE build and deploy. That ordering is the substance of
+# "shift-left": no build minutes are spent on a commit that contains a leaked secret.
+#
+# THREE SCANNERS, THREE DIFFERENT RISK CLASSES:
+#   Checkov  - IaC misconfiguration (public access, missing encryption, wildcard RBAC)
+#   Trivy fs - vulnerable dependencies AND secrets in the working tree
+#   Gitleaks - secrets anywhere in GIT HISTORY. fetchDepth: 0 is essential here: a
+#              secret committed and then "removed" in a later commit is still in the
+#              history and still compromised.
+#
+# KNOWN DEFECT (docs/02 P2-14): THE GATING IS INCONSISTENT, which is worse than being
+# uniformly strict or uniformly lax.
+#   Trivy      -> --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed  = CORRECT.
+#                 Note --ignore-unfixed: failing on a vulnerability with no available
+#                 fix just teaches people to add blanket suppressions.
+#   npm audit  -> "|| echo warning"  = never fails.
+#   Checkov    -> no --soft-fail and no --hard-fail-on, so its own exit code fails the
+#                 job on ANY finding including LOW. Too strict; the first engineer it
+#                 annoys will disable it.
+#
+# THE POLICY TO STATE AND IMPLEMENT:
+#   BLOCK on: HIGH/CRITICAL with a fix available; any leaked secret; any IaC finding in
+#             a defined critical set (public network access, unencrypted storage,
+#             wildcard RBAC).
+#   WARN on:  everything else, tracked as a work item with an SLA.
+#   EVERY SUPPRESSION IS A FILE IN THE REPO - .trivyignore, .checkov.yaml skip-check -
+#   each with a justification and an EXPIRY DATE, reviewed in the pull request.
+#
+# Ungated warnings train people to ignore the pipeline; unconditional blocking trains
+# people to bypass it - and the second is worse because it is invisible. Expiring,
+# reviewed exceptions are the only version that survives a delivery deadline.
+#
+# MISSING (docs/02 P2-16): tfplan.json is generated in the Terraform stage and never
+# evaluated. Running Conftest/OPA against the PLAN catches what source scanning
+# structurally cannot - e.g. "this apply would DELETE a resource tagged criticality:
+# high". That is a genuinely advanced gate and it takes about an hour to add.
+
 stages:
   - stage: Security
     displayName: "CI - security scanning"

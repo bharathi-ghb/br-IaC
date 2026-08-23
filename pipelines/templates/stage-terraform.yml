@@ -23,6 +23,41 @@ parameters:
     type: string
     default: succeeded()
 
+# TERRAFORM - plan and apply as SEPARATE jobs, with an approval gate between them.
+#
+# THE MOST IMPORTANT PROPERTY HERE: the apply job downloads and applies THE SAVED PLAN
+# FILE rather than re-planning. That closes the time-of-check-to-time-of-use gap - what
+# the approver read is byte-for-byte what runs. Re-planning at apply time means the
+# approver approved something that may no longer be what executes.
+#
+# -detailed-exitcode gives three outcomes rather than two:
+#   0 = no changes  -> the apply is SKIPPED cleanly instead of running a no-op
+#   1 = error       -> fail immediately
+#   2 = changes     -> proceed to the gate
+#
+# AUTHENTICATION: ARM_USE_OIDC with the servicePrincipalId/idToken exposed by
+# addSpnToEnvironment. There is NO client secret anywhere - the token is minted per run
+# by Azure DevOps and validated by Entra against a federated credential. This is the
+# single most important CI/CD security control in the repository.
+#
+# ARM_USE_AZUREAD = true makes the azurerm BACKEND authenticate to the state storage
+# account with Entra rather than a shared key - which is what allows the state account
+# to have shared_access_key_enabled = false.
+#
+# TWO REFINEMENTS WORTH RAISING (docs/02 P2-16):
+#  1. THE PLAN FILE CAN CONTAIN SENSITIVE VALUES IN PLAINTEXT, and it is published as a
+#     pipeline artifact downloadable by anyone with repo read access. Mitigations:
+#     restrict artifact retention, or keep the plan on the agent between Plan and Apply
+#     by making them one job with an ADO manual-validation step.
+#  2. tfplan.json is written and NEVER USED. Feed it to Conftest/OPA for policy on the
+#     PLAN rather than on the source.
+#
+# The Export step at the end writes Terraform outputs to an outputs.env artifact that
+# stage-deploy.yml sources. That is what makes the Helm chart environment-agnostic:
+# the ACR login server, workload identity client ID, storage account, namespace and
+# ServiceAccount name all come from Terraform rather than being hardcoded - and it is
+# the correct fix for the name mismatch in docs/02 P0-6.
+
 stages:
   - stage: ${{ parameters.stageName }}
     displayName: ${{ parameters.displayName }}

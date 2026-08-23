@@ -22,6 +22,53 @@ parameters:
   - name: subscriptionId
     type: string
 
+# DEPLOY - connect to the private cluster, release with Helm, smoke test, roll back on
+# failure.
+#
+# CONNECTING TO A PRIVATE CLUSTER, the two steps that matter:
+#   az aks get-credentials   - an ARM call against the PUBLIC control plane, so it
+#                              succeeds from anywhere.
+#   kubelogin convert-kubeconfig -l azurecli - MANDATORY. Without it the kubeconfig
+#                              contains a device-code flow that PROMPTS FOR INTERACTIVE
+#                              LOGIN, which in a pipeline means the job HANGS silently
+#                              until it times out. Very recognisable failure: no error,
+#                              just a hang.
+#
+# It is the subsequent kubectl/helm traffic that requires private line-of-sight -
+# which is why the pool must be the private self-hosted one. A Microsoft-hosted agent
+# gets through get-credentials and then times out on kubectl (Scenario 4).
+#
+# EVERY VALUE COMES FROM TERRAFORM OUTPUTS via the outputs.env artifact: the registry,
+# the workload identity client ID, the storage account, the namespace and the
+# ServiceAccount name. Nothing environment-specific is hardcoded in the chart, and
+# Terraform is the single source of truth for the names that must agree with the
+# federated identity credential.
+#
+# "helm template" is run immediately before "helm upgrade" so the rendered manifest
+# appears in the build log - which is what you read first during an incident.
+#
+# --atomic --wait --timeout 10m: a failed or timed-out release ROLLS ITSELF BACK, so a
+# bad deploy never leaves a half-applied state.
+#
+# KNOWN DEFECT (docs/02 P1-14): --atomic ALREADY rolls back, and the failure step below
+# ALSO calls helm-rollback.sh, which does "helm rollback <rel> 0" (= previous). If
+# --atomic already rolled back, this rolls back AGAIN - potentially two revisions, in
+# production, automatically. Make the script idempotent: compare the current revision
+# against the last one with status "deployed" and do nothing if they match.
+#
+# WHAT THE FAILURE STEP GETS RIGHT, and is worth keeping: it captures pod state,
+# deployment description, container logs and recent events BEFORE rolling back. The
+# moment you roll back, the broken pods are gone and so is your ability to explain what
+# happened. That is the step people skip and then regret in the post-mortem.
+#
+# KNOWN DEFECT (docs/02 P2-3): the telemetry Secret step materialises the App Insights
+# connection string as a Kubernetes Secret. With local_authentication_enabled = false on
+# App Insights, the ingestion key in that string is INERT - so this is treating a
+# non-secret as a secret. The app should authenticate telemetry with the same Workload
+# Identity and read the endpoint from the ConfigMap. If a real secret is ever needed, use
+# the Key Vault CSI driver (already enabled on the cluster) so it never transits the
+# pipeline at all.
+
 stages:
   - stage: ${{ parameters.stageName }}
     displayName: ${{ parameters.displayName }}

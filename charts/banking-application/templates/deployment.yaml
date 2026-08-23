@@ -1,3 +1,43 @@
+{{/*
+=============================================================================
+DEPLOYMENT - the release strategy and pod hardening decisions live here.
+
+STRATEGY: maxUnavailable: 0 / maxSurge: 1
+  Never take capacity away during a rollout - add one pod, verify it, then remove
+  one. The trade-off is a slower rollout and the need for headroom for +1 pod.
+  This is what makes a bad release visible WITHOUT customer impact: the new pod
+  fails readiness, the old ones keep serving, and helm --atomic rolls back.
+
+checksum/config ANNOTATION (below)
+  Kubernetes does NOT restart pods when a ConfigMap changes - it updates the
+  ConfigMap and the pods keep serving the OLD values until something else restarts
+  them. That is silent, extremely confusing config drift. Hashing the rendered
+  ConfigMap into a pod-template annotation makes any config change produce a new
+  pod spec and therefore a rolling restart.
+  Cost: every trivial config change causes a rollout.
+
+azure.workload.identity/use LABEL
+  MUST be on the POD TEMPLATE (spec.template.metadata.labels), not on the
+  Deployment's own labels. That is what the azure-wi-webhook selects on. Put it in
+  the wrong place and no env vars and no token volume are injected, and the Azure
+  SDK silently falls through its credential chain to a confusing failure minutes
+  later. This is one of the most common Workload Identity mistakes.
+
+SECURITY CONTEXT (from values.yaml)
+  runAsNonRoot + runAsUser 65532 + drop ALL + seccomp RuntimeDefault +
+  readOnlyRootFilesystem = full Pod Security Standards "restricted" compliance.
+  readOnlyRootFilesystem requires the emptyDir on /tmp below; sizeLimit: 64Mi stops
+  an emptyDir filling the node's disk.
+  NOTE: 65532 must match the Dockerfile's USER directive or the container fails to
+  start with a permission error.
+
+topologySpreadConstraints with ScheduleAnyway
+  PREFERS an even spread across zones but degrades placement rather than blocking
+  scheduling during a zone outage. DoNotSchedule would be stricter but would leave
+  pods Pending when a zone is unavailable - trading availability for balance, which
+  is the wrong trade here.
+=============================================================================
+*/}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

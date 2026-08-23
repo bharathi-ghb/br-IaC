@@ -1,6 +1,22 @@
 # =============================================================================
 # Service
 # =============================================================================
+{{/*
+SERVICE - ClusterIP by default; an INTERNAL load balancer in production.
+
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" is what keeps this
+private. WITHOUT that annotation, type: LoadBalancer provisions a PUBLIC IP - which
+would breach the assessment's "no public inbound endpoint" requirement in a single
+line of YAML. It is the most dangerous default in the whole chart, which is why the
+annotation and the type are driven from the same values key.
+
+HARDENING WORTH ADDING: loadBalancerSourceRanges scoped to internal_consumer_cidrs,
+so the internal LB only accepts the consumer networks rather than the whole VNet.
+
+NOTE targetPort: http references the NAMED container port rather than a number, so
+the port can change in one place (values.service.targetPort) without the Service and
+the probes drifting apart.
+*/}}
 apiVersion: v1
 kind: Service
 metadata:

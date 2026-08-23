@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+# Shebang added: this script uses bash-only syntax ([[ ]], set -o pipefail,
+# ${VAR:?msg}) and previously had none, so running it from a non-bash shell broke.
+# See docs/02 P1-12. Also commit the executable bit: git update-index --chmod=+x
 # =============================================================================
 # Local validation - run this before pushing
 # =============================================================================
@@ -5,6 +9,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# WHY THIS EXISTS: it runs the same checks the Validate pipeline stage runs, locally,
+# in about thirty seconds. That catches the large majority of pipeline failures before
+# a push - which matters because a failed CI run costs fifteen minutes of waiting for
+# feedback you could have had immediately.
+#
+# It is a FEEDBACK LOOP, not a security boundary: anyone can skip it. The boundary is
+# server-side branch policy, which cannot be bypassed. A pre-commit hook
+# (.pre-commit-config.yaml) would make this automatic - see docs/10.
+#
+# KNOWN DEFECT (docs/02 P0-6): the helm template calls below use
+# --namespace banking-application, while the Terraform default is banking-api. Since
+# the namespace is half of the Workload Identity federated credential subject, that
+# disagreement is the same defect that causes AADSTS70021 at runtime.
 
 FAILED=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }

@@ -10,6 +10,36 @@ parameters:
       - nonprod
       - prod
 
+# VALIDATE - the cheapest gate, run first on every commit AND every pull request.
+#
+# THREE PARALLEL JOBS because they are independent and failing fast matters:
+#
+#   TerraformValidate - fmt -check (formatting is not a matter of taste when six people
+#     edit the same files), validate per environment, and tflint for provider-specific
+#     issues that validate cannot see.
+#
+#   HelmValidate      - lint, then TEMPLATE-RENDER BOTH OVERLAYS, then run kubeconform
+#     against the rendered output. That last step is the valuable one: helm lint checks
+#     the chart, kubeconform checks that the resulting MANIFESTS are valid for the target
+#     Kubernetes version. The rendered manifests are published as an artifact, which
+#     makes a reviewer able to see exactly what would be applied.
+#
+#   AppValidate       - dependency install and lint.
+#
+# KNOWN DEFECT (docs/02 P0-1): the application/ directory is EMPTY, so AppValidate
+# fails at "npm ci". Same for the Trivy filesystem scan and the docker build downstream.
+#
+# KNOWN DEFECT (docs/02 P0-2): terraform init/validate run with workingDirectory
+# $(infraRoot)/environments/<env>, but those directories contain only terraform.tfvars
+# and azurerm.tfbackend - there are NO .tf files there. The root module lives at
+# infra/terraform. Either move to per-environment root modules (which is what this
+# pipeline assumes and is the safer pattern for a bank, since a prod apply then cannot
+# touch non-prod state), or point this at the shared root with -var-file.
+#
+# KNOWN DEFECT (docs/02 P2-14): eslint is suffixed with "|| echo warning" so it can never
+# fail the build. Be deliberate: either it gates or it does not, and an ungated check
+# trains people to ignore the pipeline.
+
 stages:
   - stage: Validate
     displayName: "CI - format, validate and lint"

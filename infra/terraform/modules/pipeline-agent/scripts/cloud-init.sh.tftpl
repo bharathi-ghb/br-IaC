@@ -8,6 +8,47 @@ echo "== bootstrap started: $(date -u --iso-8601=seconds)"
 
 export DEBIAN_FRONTEND=noninteractive
 
+# =============================================================================
+# DESIGN NOTES ON THIS BOOTSTRAP
+#
+# WHAT IS GOOD HERE:
+#   - The PAT is read from Key Vault via IMDS at boot. It never enters Terraform
+#     state, never enters source control, and "set +x" below wraps the sensitive
+#     block so it never reaches the cloud-init log either.
+#   - The agent runs as a dedicated unprivileged user (azdevops), not root.
+#   - Tool versions are templated from Terraform variables rather than floating.
+#
+# KNOWN GAPS (docs/02 P2-11, P2-12, P2-13):
+#   1. SOME TOOLS ARE NOT PINNED. kubelogin uses releases/latest/download; tflint,
+#      the Azure CLI and checkov use unpinned installers. An unpinned "curl | bash"
+#      from the internet ON THE MACHINE THAT DEPLOYS TO PRODUCTION is a
+#      supply-chain finding in a bank. Everything should be pinned with checksum
+#      verification - or better, baked into a golden image with Packer / Azure
+#      Image Builder so CI never downloads anything at runtime.
+#
+#   2. THIS SUBNET HAS NO ROUTE TO THE FIREWALL, so every download below egresses
+#      to the internet UNFILTERED, outside the Azure Firewall allow-list. That
+#      directly contradicts the egress-control story elsewhere in this design.
+#
+#   3. THE PIPELINE REINSTALLS THESE ANYWAY. stage-validate.yml and
+#      stage-security.yml install tflint, checkov, trivy, gitleaks and kubeconform
+#      on every run. Two sources of truth for a version is a drift bug waiting to
+#      happen. The pipeline should VERIFY presence and fail loudly if the agent
+#      image is wrong, not reinstall.
+#
+#   4. THE PAT ITSELF. Scope it to Agent Pools (read, manage) ONLY, with a 7-day
+#      expiry and automated rotation. A default-scoped PAT on a host whose service
+#      account is also in the docker group is effectively root over the entire
+#      Azure DevOps organisation. Better still: Azure DevOps supports
+#      managed-identity agent registration, which removes the last real secret
+#      from this design entirely.
+#
+#   5. usermod -aG docker (below) is root-equivalent by design. Alternatives:
+#      rootless Docker, Podman, or buildah. Or do not build here at all -
+#      "az acr build" runs the build inside ACR and the agent never needs a Docker
+#      daemon, which removes the whole risk class.
+# =============================================================================
+
 # -----------------------------------------------------------------------------
 # Base packages
 # -----------------------------------------------------------------------------

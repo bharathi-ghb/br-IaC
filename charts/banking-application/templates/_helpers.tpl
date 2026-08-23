@@ -72,6 +72,33 @@ Fully qualified image reference.
 {{- end -}}
 
 {{/*
+=============================================================================
+FAIL-FAST GUARDS - turning runtime failures into deploy-time template errors.
+
+This is the pattern worth extending, because the failures it prevents are the
+expensive kind: silent, delayed, and diagnosed deep inside an SDK stack trace.
+
+CURRENT GUARD: workloadIdentity.enabled without a clientId. Without this the chart
+renders happily, the pod starts, passes liveness, and then fails on its FIRST Azure
+call with AADSTS700016 - minutes later, in a stack trace nobody reads.
+
+THE GUARD THAT SHOULD BE ADDED (docs/02 P0-6) - assert the Workload Identity SUBJECT
+matches what the federated credential expects, so a namespace or ServiceAccount
+rename cannot silently break authentication:
+
+  {{- if .Values.workloadIdentity.expectedSubject }}
+  {{-   $actual := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "banking-application.serviceAccountName" .) }}
+  {{-   if ne $actual .Values.workloadIdentity.expectedSubject }}
+  {{-     fail (printf "Workload Identity subject mismatch: chart renders %q but the federated credential expects %q" $actual .Values.workloadIdentity.expectedSubject) }}
+  {{-   end }}
+  {{- end }}
+
+...with expectedSubject passed by the pipeline from a new Terraform output. That
+converts AADSTS70021 - the single most common Workload Identity failure in the real
+world - from a confusing runtime error into an unmissable deploy-time one.
+=============================================================================
+*/}}
+{{/*
 Fail fast on invalid value combinations.
 */}}
 {{- define "banking-application.validateValues" -}}

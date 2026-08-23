@@ -4,6 +4,24 @@
 
 name: Terraform Infrastructure Provisioning
 
+# PIPELINE SHAPE: one multi-stage pipeline, so the promotion path from commit to
+# production is visible in a single view - which is exactly what the assessment asks
+# for ("the promotion flow must be clear").
+#
+# HONEST TRADE-OFF: in production I would SPLIT these. Infrastructure changes are rare,
+# high-risk and change-managed; application changes are frequent, low-risk and should
+# deploy many times a day. Coupling them means either the app waits for infrastructure
+# approvals or infrastructure inherits the app's cadence. Both are bad. The right split
+# is a platform pipeline that publishes its outputs, and an app pipeline that consumes
+# them.
+#
+# KNOWN DEFECT (docs/02 P1-7): the "name:" field below is the BUILD NUMBER FORMAT in
+# Azure DevOps, not a display title. So $(Build.BuildNumber) literally becomes
+# "Terraform Infrastructure Provisioning", and imageTag in variables/common.yml becomes
+# "Terraform Infrastructure Provisioning-<sha>" - which contains SPACES and is an
+# ILLEGAL OCI tag. docker tag fails with "invalid reference format".
+# Fix: name: $(Date:yyyyMMdd)$(Rev:.r)
+
 trigger:
   branches:
     include:
@@ -28,6 +46,37 @@ pr:
 
 variables:
   - template: variables/common.yml
+
+# STAGE ORDER AND WHY IT IS THIS ORDER:
+#
+#   Validate  -> fmt/validate/lint/template. Cheapest checks first: fail in 30 seconds,
+#                not 30 minutes.
+#   Security  -> BEFORE anything is built or deployed. Real shift-left: no build minutes
+#                are spent on a commit containing a leaked credential, and Gitleaks runs
+#                with fetchDepth 0 so a secret committed and later removed is still
+#                caught.
+#   BuildImage-> build, scan the image, push to a private ACR with a non-secret
+#                (token-exchange) auth pattern.
+#   Infra     -> plan, then an ENVIRONMENT GATE, then apply THE SAVED PLAN.
+#   Deploy    -> helm upgrade --atomic, then smoke tests, with rollback on failure.
+#
+# The templates are reused with different parameters: stage-terraform.yml twice and
+# stage-deploy.yml twice. The DRY win is real, but the DEEPER reason is CONSISTENCY OF
+# CONTROLS - production cannot accidentally skip a step, because it runs the identical
+# template as non-prod. That reframes templating as a security control rather than a
+# tidiness preference.
+#
+# GATES: prod cannot be reached without non-prod succeeding first AND an Azure DevOps
+# Environment approval. Those approvals are configured in Azure DevOps, NOT in this
+# repo - so a reviewer cannot see them. They must be documented in the README
+# (docs/02 P2-15).
+#
+# KNOWN DEFECT (docs/02 P1-6): BuildImage is invoked ONCE, with acrName =
+# $(nonProdAcrName), so the image only ever lands in acrnonprod. The PROD deploy then
+# sets image.registry from the PROD Terraform outputs (acrprod.azurecr.io) - where that
+# image does not exist. Result: ImagePullBackOff, i.e. Troubleshooting Scenario 3,
+# self-inflicted. The fix is an "az acr import" promotion step BY DIGEST after prod
+# approval, so the exact bitstream that passed non-prod is what runs in production.
 
 stages:
   # ===========================================================================

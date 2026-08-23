@@ -2,6 +2,33 @@
 # =============================================================================
 # NetworkPolicy
 # =============================================================================
+{{/*
+NETWORK POLICY - defence in depth INSIDE the cluster, complementing the Azure
+Firewall's control at the subnet edge. Enforced by Calico.
+
+EGRESS, in order:
+  1. DNS to kube-system only (53 UDP/TCP) - without this rule everything else breaks,
+     because a default-deny egress policy blocks name resolution first.
+  2. 443 to allowedEgressCidrs (the VNet) - reaching the private endpoints.
+  3. 443 to the internet EXCEPT RFC1918 and 169.254.169.254/32.
+
+THAT LAST EXCEPTION IS THE IMPORTANT ONE. Blocking 169.254.169.254 blocks IMDS, which
+stops a compromised container from stealing the NODE's managed identity credentials.
+It is textbook SSRF and credential-theft hardening, and it is worth naming explicitly -
+it signals the policy was reasoned about rather than copied.
+
+KNOWN DEFECT (docs/02 P2-5): the INGRESS rule has "ports" but NO "from" selector,
+which permits ANY source to reach that port. It should be scoped to:
+  - the node subnet CIDR (internal load balancer traffic and kube-proxy)
+  - 168.63.129.16/32, the Azure load balancer HEALTH PROBE source
+  - any ingress controller namespace/pod selector
+Miss the health-probe source and the internal LB marks every backend down - a fun,
+hard-to-diagnose total outage.
+
+READABILITY NOTE: 10.0.0.0/8 is excepted from the internet rule AND separately allowed
+by allowedEgressCidrs. The net effect is correct but the double negative is hard to
+read; the two rules should carry comments explaining the interaction.
+*/}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -2,6 +2,24 @@
 # Pod Disruption Budget: protects availability during voluntary disruptions such
 # as node upgrades and cluster autoscaler drains.
 
+{{/*
+POD DISRUPTION BUDGET - protects availability during VOLUNTARY disruptions: node
+upgrades, cluster autoscaler scale-in, and manual drains. It does nothing for
+involuntary disruption (a node crashing).
+
+KNOWN BRITTLENESS (docs/02 P2-15): minAvailable: 2 with 3 replicas is safe today, but
+it is an ABSOLUTE FLOOR. If replicas ever drop to 2 - a scale-down, or an HPA change -
+the budget can never be satisfied and NODE DRAINS BLOCK FOREVER, which means cluster
+upgrades stall silently.
+
+maxUnavailable: 1 is the safer formulation because it scales WITH the replica count
+instead of being a fixed floor. It is a good example of a control that protects
+availability in the normal case and destroys operability in the edge case - always
+check "kubectl get pdb" before starting a node drain.
+
+Disabled in non-prod (values-nonprod.yaml) because a single replica plus a PDB would
+block every drain by definition.
+*/}}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

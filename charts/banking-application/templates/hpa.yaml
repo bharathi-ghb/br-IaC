@@ -1,5 +1,26 @@
 {{- if .Values.autoscaling.enabled }}
 
+{{/*
+HORIZONTAL POD AUTOSCALER.
+
+HONEST CRITIQUE (docs/02 P2-7): CPU and memory are the WRONG SIGNALS for this
+workload. This app spends its life waiting on Blob Storage and TVMaze - it is
+I/O-bound. Under load, latency degrades and the request queue grows while CPU barely
+moves. So CPU-based HPA under-scales exactly when you need it most, and over-scales
+during an unrelated CPU spike.
+
+THE RIGHT ANSWER is KEDA (an AKS add-on) scaling on REQUESTS PER SECOND or p95
+LATENCY from Application Insights or Prometheus - scaling on the signal that matters
+rather than the one that is easy to obtain.
+
+behavior.scaleDown.stabilizationWindowSeconds: 300 prevents flapping - the HPA waits
+five minutes of sustained low load before scaling in. scaleUp is deliberately left at
+the default, which is aggressive (100% or 4 pods per 15s) and is usually correct:
+you want to scale up fast and down slowly.
+
+Note the Deployment omits spec.replicas when autoscaling is enabled - otherwise Helm
+and the HPA fight over the field on every release.
+*/}}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
