@@ -22,7 +22,12 @@
 # --- Image -------------------------------------------------------------------
 image:
   registry: ""
-  repository: br-iac
+  # MUST match `imageRepository` in pipelines/variables/common.yml. The pipeline
+  # overrides image.registry and image.tag with --set, but NOT image.repository -
+  # so this value is what actually selects the image, and a mismatch renders a
+  # reference to an image that was never pushed (ImagePullBackOff, Scenario 3).
+  # Was "br-iac", which disagreed with the pipeline's "banking-application".
+  repository: banking-application
   tag: ""
   pullPolicy: IfNotPresent
 
