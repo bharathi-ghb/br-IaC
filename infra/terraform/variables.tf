@@ -153,6 +153,63 @@ variable "firewall_name" {
   default     = ""
 }
 
+variable "nsg_rules_aks_nodes" {
+  description = "(Optional) A list of security rules to apply to the Network Security Group"
+  type = list(object({
+    access                                     = string
+    description                                = optional(string, "")
+    destination_address_prefixes               = optional(list(string), null)
+    destination_application_security_group_ids = optional(list(string), [])
+    destination_port_ranges                    = optional(list(string), null)
+    direction                                  = optional(string, "Inbound")
+    name                                       = string
+    priority                                   = number
+    protocol                                   = optional(string, "Tcp")
+    source_address_prefixes                    = optional(list(string), null)
+    source_application_security_group_ids      = optional(list(string), [])
+    source_port_ranges                         = optional(list(string), null)
+  }))
+  default = []
+}
+
+variable "nsg_rules_private_endpoints" {
+  description = "(Optional) A list of security rules to apply to the Network Security Group"
+  type = list(object({
+    access                                     = string
+    description                                = optional(string, "")
+    destination_address_prefixes               = optional(list(string), null)
+    destination_application_security_group_ids = optional(list(string), [])
+    destination_port_ranges                    = optional(list(string), null)
+    direction                                  = optional(string, "Inbound")
+    name                                       = string
+    priority                                   = number
+    protocol                                   = optional(string, "Tcp")
+    source_address_prefixes                    = optional(list(string), null)
+    source_application_security_group_ids      = optional(list(string), [])
+    source_port_ranges                         = optional(list(string), null)
+  }))
+  default = []
+}
+
+variable "nsg_rules_pipeline_agents" {
+  description = "(Optional) A list of security rules to apply to the Network Security Group"
+  type = list(object({
+    access                                     = string
+    description                                = optional(string, "")
+    destination_address_prefixes               = optional(list(string), null)
+    destination_application_security_group_ids = optional(list(string), [])
+    destination_port_ranges                    = optional(list(string), null)
+    direction                                  = optional(string, "Inbound")
+    name                                       = string
+    priority                                   = number
+    protocol                                   = optional(string, "Tcp")
+    source_address_prefixes                    = optional(list(string), null)
+    source_application_security_group_ids      = optional(list(string), [])
+    source_port_ranges                         = optional(list(string), null)
+  }))
+  default = []
+}
+
 # -----------------------------------------------------------------------------
 # DNS Components Variables
 # -----------------------------------------------------------------------------

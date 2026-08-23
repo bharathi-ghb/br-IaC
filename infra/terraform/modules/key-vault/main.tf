@@ -45,15 +45,6 @@ resource "azurerm_private_endpoint" "kv" {
   }
 }
 
-resource "azurerm_private_dns_a_record" "kv" {
-  name                = azurerm_key_vault.kv.name
-  zone_name           = var.private_dns_zone_name
-  resource_group_name = var.resource_group_name
-  ttl                 = 300
-  records = [azurerm_private_endpoint.kv.private_service_connection[0].private_ip_address]
-  tags = var.tags
-}
-
 resource "azurerm_role_assignment" "secrets_user" {
   for_each = toset(var.secrets_user_principal_ids)
 
@@ -71,7 +62,7 @@ resource "azurerm_role_assignment" "secrets_officer" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "kv" {
-  for_each = var.enable_diagnostics ? toset(["kv"]) : toset([])
+  count = var.enable_diagnostics ? 1 : 0
 
   name                       = "kv-diagnostics-to-law"
   target_resource_id         = azurerm_key_vault.kv.id

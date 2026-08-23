@@ -11,10 +11,11 @@ resource "azurerm_storage_account" "sa" {
   account_replication_type        = var.replication_type
   account_kind                    = "StorageV2"
   access_tier                     = "Hot"
-  shared_access_key_enabled       = true
+  shared_access_key_enabled       = false
   public_network_access_enabled   = false
   https_traffic_only_enabled      = true
   min_tls_version                 = "TLS1_2"
+  default_to_oauth_authentication = true
   infrastructure_encryption_enabled = true
 
   identity {
@@ -67,15 +68,6 @@ resource "azurerm_private_endpoint" "storage_blob" {
   }
 }
 
-resource "azurerm_private_dns_a_record" "storage_blob" {
-  name                = azurerm_storage_account.sa.name
-  zone_name           = var.blob_private_dns_zone_name
-  resource_group_name = var.resource_group_name
-  ttl                 = 300
-  records = [azurerm_private_endpoint.storage_blob.private_service_connection[0].private_ip_address]
-  tags = var.tags
-}
-
 resource "azurerm_role_assignment" "rbac" {
   for_each = toset(var.data_contributor_principal_ids)
 
@@ -85,7 +77,7 @@ resource "azurerm_role_assignment" "rbac" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "blob" {
-  for_each = var.enable_diagnostics ? toset(["blob"]) : toset([])
+  count = var.enable_diagnostics ? 1 : 0
 
   name                       = "blob-diagnostics-to-law"
   target_resource_id         = "${azurerm_storage_account.sa.id}/blobServices/default"

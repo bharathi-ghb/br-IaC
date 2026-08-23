@@ -87,3 +87,9 @@ variable "failed_request_threshold" {
   type        = number
   default     = 10
 }
+
+variable "latency_threshold_ms" {
+  description = "Average request duration in milliseconds that triggers a severity 2 alert."
+  type        = number
+  default     = 2000
+}

@@ -59,15 +59,14 @@ resource "azurerm_role_assignment" "acr_push" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "acr" {
-  for_each = var.enable_diagnostics ? toset(["acr"]) : toset([])
+  count = var.enable_diagnostics ? 1 : 0
 
   name                       = "acr-diagnostics-to-law"
   target_resource_id         = azurerm_container_registry.acr.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
-  enabled_log { 
-    category_group = "allLogs" 
-  }
+  enabled_log { category_group = "allLogs" }
+
   enabled_metric {
     category = "AllMetrics"
   }

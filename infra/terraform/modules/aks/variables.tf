@@ -189,3 +189,9 @@ variable "maintenance_start_time" {
   type        = string
   default     = "02:00"
 }
+
+variable "enable_diagnostics" {
+  description = "Send resource logs to Log Analytics. A boolean (rather than a null check on the workspace ID) keeps resource counts known at plan time."
+  type        = bool
+  default     = true
+}

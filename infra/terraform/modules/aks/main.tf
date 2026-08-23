@@ -184,6 +184,8 @@ resource "azurerm_role_assignment" "cluster_user" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "aks" {
+  count = var.enable_diagnostics ? 1 : 0
+  
   name                       = "aks-diagnostics-to-law"
   target_resource_id         = azurerm_kubernetes_cluster.aks_cluster.id
   log_analytics_workspace_id = var.log_analytics_workspace_id

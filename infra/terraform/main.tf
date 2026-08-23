@@ -71,6 +71,9 @@ module "network_spoke" {
   hub_vnet_name                  = module.network_hub.hub_vnet_name
   hub_resource_group_name        = azurerm_resource_group.rg_hub.name
   internal_consumer_cidrs        = var.internal_consumer_cidrs
+  nsg_rules_aks_nodes            = var.nsg_rules_aks_nodes
+  nsg_rules_private_endpoints    = var.nsg_rules_private_endpoints
+  nsg_rules_pipeline_agents      = var.nsg_rules_pipeline_agents
   enable_diagnostics             = true
   log_analytics_workspace_id     = module.observability.log_analytics_workspace_id
 }
@@ -84,8 +87,6 @@ module "private_dns" {
   resource_group_name = azurerm_resource_group.rg_hub.name
   tags                = azurerm_resource_group.rg_hub.tags
   zone_names          = var.private_dns_zones
-  enable_diagnostics  = true
-  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
   linked_virtual_networks = {
     spoke = module.network_spoke.spoke_vnet_id
     hub   = module.network_hub.hub_vnet_id
@@ -208,6 +209,7 @@ module "aks" {
   admin_group_object_ids      = var.aks_admin_group_object_ids
   reader_group_object_ids     = var.aks_reader_group_object_ids
   deployer_principal_ids      = var.pipeline_principal_ids
+  enable_diagnostics          = true
   log_analytics_workspace_id  = module.observability.log_analytics_workspace_id
 }
 

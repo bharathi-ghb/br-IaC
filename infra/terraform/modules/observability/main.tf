@@ -10,8 +10,8 @@ resource "azurerm_log_analytics_workspace" "law" {
   sku                          = "PerGB2018"
   retention_in_days            = var.retention_in_days
   local_authentication_enabled = var.enable_local_auth
-  internet_ingestion_enabled   = var.enable_private_link
-  internet_query_enabled       = var.allow_public_query
+  internet_ingestion_enabled   = !var.enable_private_link
+  internet_query_enabled       = var.enable_private_link ? var.allow_public_query : true
   daily_quota_gb               = var.daily_quota_gb
 
   lifecycle {
@@ -27,17 +27,17 @@ resource "azurerm_application_insights" "appi" {
   application_type             = "web"
   tags                         = var.tags
   local_authentication_enabled = var.enable_local_auth
-  internet_ingestion_enabled   = var.enable_private_link
-  internet_query_enabled       = var.allow_public_query
+  internet_ingestion_enabled   = !var.enable_private_link
+  internet_query_enabled       = var.enable_private_link ? var.allow_public_query : true
   sampling_percentage          = var.sampling_percentage
 }
 
 resource "azurerm_monitor_private_link_scope" "ampls" {
   count = var.enable_private_link ? 1 : 0
 
-  name                = var.ampls_name
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  name                  = var.ampls_name
+  resource_group_name   = var.resource_group_name
+  tags                  = var.tags
   ingestion_access_mode = "PrivateOnly"
   query_access_mode     = var.allow_public_query ? "Open" : "PrivateOnly"
 }
@@ -121,6 +121,31 @@ resource "azurerm_monitor_metric_alert" "failed_requests" {
     aggregation      = "Count"
     operator         = "GreaterThan"
     threshold        = var.failed_request_threshold
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.infra[0].id
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "server_latency" {
+  count = length(var.alert_email_receivers) > 0 ? 1 : 0
+
+  name                = "${var.app_insights_name}-latency"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_application_insights.appi.id]
+  description         = "API server response time above threshold"
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  tags                = var.tags
+
+  criteria {
+    metric_namespace = "microsoft.insights/components"
+    metric_name      = "requests/duration"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = var.latency_threshold_ms
   }
 
   action {

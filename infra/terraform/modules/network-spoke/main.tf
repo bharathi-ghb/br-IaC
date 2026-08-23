@@ -266,18 +266,3 @@ resource "azurerm_subnet_route_table_association" "pipeline_agents" {
   subnet_id      = azurerm_subnet.pipeline_agents.id
   route_table_id = azurerm_route_table.pipeline_agents.id
 }
-
-resource "azurerm_monitor_diagnostic_setting" "network_spoke" {
-  for_each = var.enable_diagnostics ? toset(["network_spoke"]) : toset([])
-
-  name                       = "network-spoke-diagnostics-to-law"
-  target_resource_id         = azurerm_virtual_network.spoke_vnet.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
-
-  enabled_log { 
-    category_group = "allLogs" 
-  }
-  enabled_metric {
-    category = "AllMetrics"
-  }
-}
