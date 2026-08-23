@@ -29,32 +29,11 @@ resource "azurerm_resource_group" "rg_hub" {
 }
 
 # -----------------------------------------------------------------------------
-# Diagnostics settings (Log Analytics Workspace, App Insights, Azure Monitor)
-# -----------------------------------------------------------------------------
-
-module "observability" {
-  source = "../modules/observability"
-  resource_group_name          = azurerm_resource_group.rg_infra.name
-  location                     = azurerm_resource_group.rg_infra.location
-  tags                         = azurerm_resource_group.rg_infra.tags
-  log_analytics_name           = "log-${var.environment}-${var.name_prefix}"
-  app_insights_name            = "appi-${var.environment}-${var.name_prefix}"
-  ampls_name                   = "ampls-${var.environment}-${var.name_prefix}"
-  retention_in_days            = var.log_retention_days
-  daily_quota_gb               = var.log_daily_quota_gb
-  enable_private_link          = var.enable_monitor_private_link
-  allow_public_query           = var.allow_public_log_query
-  private_endpoint_subnet_id   = module.network_spoke.private_endpoint_subnet_id
-  monitor_private_dns_zone_ids = [for z in var.private_dns_zones : module.private_dns.zone_ids[z]]
-  alert_email_receivers        = var.alert_email_receivers
-}
-
-# -----------------------------------------------------------------------------
 # Network Components  — VNets(Hub + Spoke) + subnets + NSGs + Firewall + Spoke Peering + Association
 # -----------------------------------------------------------------------------
 
 module "network_hub" {
-  source = "../modules/network-hub"
+  source = "./modules/network-hub"
   location                = azurerm_resource_group.rg_hub.location
   resource_group_name     = azurerm_resource_group.rg_hub.name
   tags                    = azurerm_resource_group.rg_hub.tags
@@ -68,7 +47,6 @@ module "network_hub" {
   firewall_sku_tier       = var.firewall_sku_tier
   enable_firewall         = var.enable_firewall
   availability_zones      = var.availability_zones
-  route_table_name        = var.route_table_name
   spoke_address_spaces    = [var.spoke_address_space]
   allowed_egress_fqdns    = var.allowed_egress_fqdns
   enable_diagnostics         = true
@@ -76,7 +54,7 @@ module "network_hub" {
 }
 
 module "network_spoke" {
-  source = "../modules/network-spoke"
+  source = "./modules/network-spoke"
   resource_group_name            = azurerm_resource_group.rg_infra.name
   location                       = azurerm_resource_group.rg_infra.location
   tags                           = azurerm_resource_group.rg_infra.tags
@@ -102,7 +80,7 @@ module "network_spoke" {
 # -----------------------------------------------------------------------------
 
 module "private_dns" {
-  source = "../modules/private-dns"
+  source = "./modules/private-dns"
   resource_group_name = azurerm_resource_group.rg_hub.name
   tags                = azurerm_resource_group.rg_hub.tags
   zone_names          = var.private_dns_zones
@@ -115,11 +93,32 @@ module "private_dns" {
 }
 
 # -----------------------------------------------------------------------------
+# Diagnostics settings (Log Analytics Workspace, App Insights, Azure Monitor)
+# -----------------------------------------------------------------------------
+
+module "observability" {
+  source = "./modules/observability"
+  resource_group_name          = azurerm_resource_group.rg_infra.name
+  location                     = azurerm_resource_group.rg_infra.location
+  tags                         = azurerm_resource_group.rg_infra.tags
+  log_analytics_name           = "log-${var.environment}-${var.name_prefix}"
+  app_insights_name            = "appi-${var.environment}-${var.name_prefix}"
+  ampls_name                   = "ampls-${var.environment}-${var.name_prefix}"
+  retention_in_days            = var.log_retention_days
+  daily_quota_gb               = var.log_daily_quota_gb
+  enable_private_link          = var.enable_monitor_private_link
+  allow_public_query           = var.allow_public_log_query
+  private_endpoint_subnet_id   = module.network_spoke.private_endpoint_subnet_id
+  monitor_private_dns_zone_ids = [for z in var.private_dns_zones : module.private_dns.zone_ids[z]]
+  alert_email_receivers        = var.alert_email_receivers
+}
+
+# -----------------------------------------------------------------------------
 # ACR Components — ACR + Private Endpoint + Private DNS Zone Link
 # -----------------------------------------------------------------------------
 
 module "acr" {
-  source = "../modules/container-registry"
+  source = "./modules/container-registry"
   name                      = "acr${var.environment}"
   resource_group_name        = azurerm_resource_group.rg_infra.name
   location                   = azurerm_resource_group.rg_infra.location
@@ -128,7 +127,7 @@ module "acr" {
   private_endpoint_subnet_id = module.network_spoke.private_endpoint_subnet_id
   private_dns_zone_id        = module.private_dns.zone_ids["privatelink.azurecr.io"]
   pull_principal_ids         = [module.aks.kubelet_identity_object_id]
-  push_principal_ids         = var.pipeline_principal_ids
+  push_principal_ids         = [module.identity.principal_id]
   enable_diagnostics         = true
   log_analytics_workspace_id = module.observability.log_analytics_workspace_id
 }
@@ -151,6 +150,7 @@ module "storage" {
   private_endpoint_subnet_id     = module.network_spoke.private_endpoint_subnet_id
   blob_private_dns_zone_id       = module.private_dns.zone_ids["privatelink.blob.core.windows.net"]
   blob_private_dns_zone_name     = module.private_dns.zone_names["privatelink.blob.core.windows.net"]
+  data_contributor_principal_ids = [module.identity.principal_id]
   enable_diagnostics             = true
   log_analytics_workspace_id     = module.observability.log_analytics_workspace_id
 }
@@ -160,7 +160,7 @@ module "storage" {
 # -----------------------------------------------------------------------------
 
 module "key_vault" {
-  source = "../modules/key-vault"
+  source = "./modules/key-vault"
 
   name                          = "kv-${var.environment}-${var.name_prefix}"
   resource_group_name           = azurerm_resource_group.rg_infra.name
@@ -170,7 +170,7 @@ module "key_vault" {
   private_endpoint_subnet_id    = module.network_spoke.private_endpoint_subnet_id
   private_dns_zone_id           = module.private_dns.zone_ids["privatelink.vaultcore.azure.net"]
   private_dns_zone_name         = module.private_dns.zone_names["privatelink.vaultcore.azure.net"]
-  secrets_user_principal_ids    = var.pipeline_principal_ids
+  secrets_user_principal_ids    = [module.identity.principal_id]
   secrets_officer_principal_ids = var.kv_admin_group_object_ids
   enable_diagnostics            = true
   log_analytics_workspace_id    = module.observability.log_analytics_workspace_id
@@ -180,9 +180,9 @@ module "key_vault" {
 # AKS Components + Private Endpoint + Private DNS Zone Link
 # ---------------------------------------------------------------------------
 module "aks" {
-  source = "../modules/aks"
+  source = "./modules/aks"
   name                        = "aks-${var.environment}-${var.name_prefix}"
-  node_resource_group_name    = azurerm_resource_group.rg_infra.name
+  node_resource_group_name    = "rg-${var.environment}-${var.name_prefix}-aks-nodes"
   control_plane_identity_name = "id-aks-control-${var.environment}-${var.name_prefix}"
   resource_group_name         = azurerm_resource_group.rg_infra.name
   location                    = azurerm_resource_group.rg_infra.location
@@ -193,7 +193,6 @@ module "aks" {
   node_subnet_id              = module.network_spoke.aks_subnet_id
   enable_forced_tunnelling    = var.enable_firewall
   private_dns_zone_id         = module.private_dns.zone_ids["privatelink.westeurope.azmk8s.io"]
-  private_dns_zone_name       = module.private_dns.zone_names["privatelink.westeurope.azmk8s.io"]
   route_table_id              = module.network_spoke.route_table_id
   pod_cidr                    = var.pod_cidr
   service_cidr                = var.service_cidr
@@ -217,7 +216,7 @@ module "aks" {
 # ---------------------------------------------------------------------------
 
 module "identity" {
-  source = "../modules/identity"
+  source = "./modules/identity"
 
   identity_name       = "id-aks-${var.environment}-${var.name_prefix}"
   resource_group_name = azurerm_resource_group.rg_infra.name
@@ -239,7 +238,7 @@ module "identity" {
 
 module "pipeline_agent" {
   count  = var.enable_pipeline_agent_vm ? 1 : 0
-  source = "../modules/pipeline-agent"
+  source = "./modules/pipeline-agent"
 
   name                 = "vm-agent-${var.environment}-${var.name_prefix}"
   resource_group_name  = azurerm_resource_group.rg_infra.name
@@ -269,7 +268,7 @@ module "pipeline_agent" {
 # Governance
 # ---------------------------------------------------------------------------
 module "governance" {
-  source = "../modules/governance"
+  source = "./modules/governance"
 
   resource_group_name      = azurerm_resource_group.rg_infra.name
   allowed_locations        = var.policy_allowed_locations

@@ -10,10 +10,9 @@ variable "tags" {
   default     = {}
 }
 
-variable "private_dns_zones" {
-  description = "Private DNS zone names to create"
+variable "zone_names" {
+  description = "Private DNS zone names to create, for example 'privatelink.blob.core.windows.net'."
   type        = list(string)
-  default     = []
 }
 
 variable "linked_virtual_networks" {

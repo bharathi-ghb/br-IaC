@@ -15,6 +15,7 @@ resource "azurerm_virtual_network" "hub_vnet" {
 }
 
 resource "azurerm_subnet" "firewall" {
+  count = var.enable_firewall ? 1 : 0
   name                 = "AzureFirewallSubnet"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.hub_vnet.name
@@ -26,6 +27,7 @@ resource "azurerm_subnet" "firewall" {
 }
 
 resource "azurerm_public_ip" "firewall" {
+  count = var.enable_firewall ? 1 : 0
   name                = var.firewall_public_ip_name
   resource_group_name = var.resource_group_name
   location            = var.location
@@ -36,6 +38,7 @@ resource "azurerm_public_ip" "firewall" {
 }
 
 resource "azurerm_firewall_policy" "fwp" {
+  count = var.enable_firewall ? 1 : 0
   name                     = var.firewall_policy_name
   resource_group_name      = var.resource_group_name
   location                 = var.location
@@ -106,7 +109,8 @@ resource "azurerm_firewall_policy_rule_collection_group" "egress" {
 }
 
 resource "azurerm_firewall" "fw" {
-  name                = "fw-hub-${var.environment}"
+  count = var.enable_firewall ? 1 : 0
+  name                = var.firewall_name
   resource_group_name = var.resource_group_name
   location            = var.location
   sku_name            = "AZFW_VNet"
@@ -126,16 +130,16 @@ resource "azurerm_firewall" "fw" {
   }
 }
 
-resource "azurerm_monitor_diagnostic_setting" "network_hub" {
-  for_each = var.enable_diagnostics ? toset(["network_hub"]) : toset([])
+resource "azurerm_monitor_diagnostic_setting" "firewall_hub" {
+  count = var.enable_firewall && var.enable_diagnostics ? 1 : 0
 
-  name                       = "network-hub-diagnostics-to-law"
-  target_resource_id         = azurerm_virtual_network.hub_vnet.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+  name                           = "network-hub-diagnostics-to-law"
+  target_resource_id             = azurerm_firewall.fw[0].id
+  log_analytics_workspace_id     = var.log_analytics_workspace_id
+  log_analytics_destination_type = "Dedicated"
 
-  enabled_log { 
-    category_group = "allLogs" 
-  }
+  enabled_log { category_group = "allLogs" }
+
   enabled_metric {
     category = "AllMetrics"
   }
