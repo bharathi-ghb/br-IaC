@@ -52,7 +52,7 @@ variables:
     value: "acrprod"
 
   - name: appNamespace
-    value: "banking-application"
+    value: ""
   - name: helmRelease
     value: "banking-application"
 
