@@ -37,7 +37,7 @@ variable "kubernetes_version" {
 variable "automatic_upgrade_channel" {
   description = "AKS auto-upgrade channel: patch, stable, rapid, node-image or none."
   type        = string
-  default     = "patch"
+  default     = "none"
 }
 
 variable "sku_tier" {
@@ -102,7 +102,7 @@ variable "availability_zones" {
 variable "system_node_vm_size" {
   description = "VM size for the system node pool."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D2ds_v5"
 }
 
 variable "system_node_min_count" {
@@ -129,10 +129,21 @@ variable "enable_user_node_pool" {
   default     = true
 }
 
+variable "taint_system_pool" {
+  description = "Reserve the system node pool for critical addons by applying the CriticalAddonsOnly taint. Requires a user node pool, since application workloads cannot schedule onto a tainted system pool."
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = !var.taint_system_pool || var.enable_user_node_pool
+    error_message = "taint_system_pool may only be true when enable_user_node_pool is true: tainting the system pool with no user pool leaves application workloads unschedulable."
+  }
+}
+
 variable "user_node_vm_size" {
   description = "VM size for the application node pool."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D2ds_v5"
 }
 
 variable "user_node_min_count" {

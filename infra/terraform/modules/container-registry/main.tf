@@ -11,8 +11,9 @@ resource "azurerm_container_registry" "acr" {
   admin_enabled                 = false
   public_network_access_enabled = false
   network_rule_bypass_option    = "AzureServices"
-  retention_policy_in_days      = var.untagged_retention_days
+  retention_policy_in_days      = var.acr_untagged_retention_days
   trust_policy_enabled          = var.enable_content_trust
+  zone_redundancy_enabled       = var.zone_redundancy_enabled
 
   identity {
     type = "SystemAssigned"

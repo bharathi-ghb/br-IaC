@@ -88,7 +88,7 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
     os_disk_type         = "Ephemeral"
     os_disk_size_gb      = var.system_node_os_disk_gb
     max_pods             = var.max_pods_per_node
-    only_critical_addons_enabled = var.enable_user_node_pool
+    only_critical_addons_enabled = var.taint_system_pool
     temporary_name_for_rotation  = "systemtmp"
 
     upgrade_settings {

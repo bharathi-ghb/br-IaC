@@ -45,16 +45,16 @@ variable "push_principal_ids" {
   default     = []
 }
 
-variable "untagged_retention_days" {
-  description = "Days to keep untagged manifests before automatic cleanup."
-  type        = number
-  default     = 7
-}
-
 variable "enable_content_trust" {
   description = "Enable Docker content trust (image signing) on the registry."
   type        = bool
   default     = false
+}
+
+variable "zone_redundancy_enabled" {
+  description = "Zone redundancy property."
+  type        = bool
+  default     = ""
 }
 
 variable "enable_diagnostics" {
@@ -67,4 +67,10 @@ variable "log_analytics_workspace_id" {
   description = "Workspace for diagnostics. Required when enable_diagnostics is true."
   type        = string
   default     = ""
+}
+
+variable "acr_untagged_retention_days" {
+  description = "Days to keep untagged manifests in the registry."
+  type        = number
+  default     = 7
 }
