@@ -152,7 +152,6 @@ stages:
                         --set config.storageAccountName="$(storageAccountName)" \
                         --set config.cacheContainer="$(cacheContainerName)" \
                         --set serviceAccount.name="$(serviceAccountName)" \
-                        --atomic \
                         --wait \
                         --timeout 10m \
                         --description "Build $(Build.BuildNumber) / commit $(Build.SourceVersion)"

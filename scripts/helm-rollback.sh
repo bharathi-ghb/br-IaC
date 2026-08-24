@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # =============================================================================
 # Helm rollback
 # =============================================================================
@@ -8,15 +9,12 @@ RELEASE="${2:?release name required}"
 REVISION="${3:-0}" # 0 means "previous revision" to helm
 
 echo "== Release history before rollback"
-helm history "$RELEASE" --namespace "$NAMESPACE" --max 10
 
-echo
-echo "== Rolling back ${RELEASE} to revision ${REVISION:-previous}"
-helm rollback "$RELEASE" "$REVISION" \
-  --namespace "$NAMESPACE" \
-  --wait \
-  --timeout 5m \
-  --cleanup-on-fail
+CURRENT=$(helm history "$RELEASE" -n "$NAMESPACE" -o json | jq -r 'last | .revision')
+LAST_GOOD=$(helm history "$RELEASE" -n "$NAMESPACE" -o json | jq -r '[.[]|select(.status=="deployed")]|last|.revision')
+[[ "$CURRENT" == "$LAST_GOOD" ]] \
+  && echo "already at last-known-good revision $LAST_GOOD, nothing to roll back" \
+  || helm rollback "$RELEASE" "$LAST_GOOD" -n "$NAMESPACE" --wait
 
 echo
 echo "== Release history after rollback"
