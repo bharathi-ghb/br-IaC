@@ -1,5 +1,7 @@
 environment = "prod"
 
+location  = "westeurope"
+
 name_prefix = "iac"
 
 replication_type  = "ZRS"
@@ -90,7 +92,7 @@ private_dns_zones = [
   "privatelink.ods.opinsights.azure.com",
   "privatelink.oms.opinsights.azure.com",
   "privatelink.agentsvc.azure-automation.net",
-  "privatelink.westeurope.azmk8s.io"
+  "privatelink.${var.location}.azmk8s.io"
 ]
 
 alert_email_receivers = {
