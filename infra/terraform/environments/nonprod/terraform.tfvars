@@ -2,6 +2,14 @@ environment = "nonprod"
 
 name_prefix = "iac"
 
+replication_type  = "LRS"
+
+zone_redundancy_enabled = false
+
+retention_in_days = 90
+
+kubernetes_policy_effect  = "Audit"
+
 hub_address_space              = "10.100.0.0/22"
 firewall_subnet_prefix         = "10.100.0.0/26"
 spoke_address_space            = "10.101.0.0/22"
@@ -71,6 +79,7 @@ tags = {
   managedBy = "terraform"
   owner     = "abn-amro"
   environment = "nonprod"
+  cost_centre = "banking"
 }
 
 private_dns_zones = [

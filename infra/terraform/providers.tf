@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0, < 2"
+  required_version = ">= 1.9.0, < 2" # 1.9 added cross-variable references in validation blocks
 
   backend "azurerm" {}
 

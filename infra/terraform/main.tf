@@ -112,6 +112,7 @@ module "observability" {
   private_endpoint_subnet_id   = module.network_spoke.private_endpoint_subnet_id
   monitor_private_dns_zone_ids = [for z in var.private_dns_zones : module.private_dns.zone_ids[z]]
   alert_email_receivers        = var.alert_email_receivers
+  enable_local_auth            = var.enable_local_auth
 }
 
 # -----------------------------------------------------------------------------
@@ -129,6 +130,8 @@ module "acr" {
   private_dns_zone_id        = module.private_dns.zone_ids["privatelink.azurecr.io"]
   pull_principal_ids         = [module.aks.kubelet_identity_object_id]
   push_principal_ids         = [module.identity.principal_id]
+  acr_untagged_retention_days = var.acr_untagged_retention_days
+  zone_redundancy_enabled    = var.zone_redundancy_enabled
   enable_diagnostics         = true
   log_analytics_workspace_id = module.observability.log_analytics_workspace_id
 }
@@ -173,6 +176,7 @@ module "key_vault" {
   private_dns_zone_name         = module.private_dns.zone_names["privatelink.vaultcore.azure.net"]
   secrets_user_principal_ids    = [module.identity.principal_id]
   secrets_officer_principal_ids = var.kv_admin_group_object_ids
+  enable_kv_purge_protection    = var.enable_kv_purge_protection
   enable_diagnostics            = true
   log_analytics_workspace_id    = module.observability.log_analytics_workspace_id
 }
@@ -190,6 +194,7 @@ module "aks" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   tags                        = azurerm_resource_group.rg_infra.tags
   kubernetes_version          = var.kubernetes_version
+  automatic_upgrade_channel   = var.automatic_upgrade_channel
   sku_tier                    = var.aks_sku_tier
   node_subnet_id              = module.network_spoke.aks_subnet_id
   enable_forced_tunnelling    = var.enable_firewall
@@ -203,6 +208,7 @@ module "aks" {
   system_node_min_count       = var.system_node_min_count
   system_node_max_count       = var.system_node_max_count
   enable_user_node_pool       = var.enable_user_node_pool
+  taint_system_pool           = var.taint_system_pool
   user_node_vm_size           = var.user_node_vm_size
   user_node_min_count         = var.user_node_min_count
   user_node_max_count         = var.user_node_max_count
@@ -272,7 +278,7 @@ module "pipeline_agent" {
 module "governance" {
   source = "./modules/governance"
 
-  resource_group_name      = azurerm_resource_group.rg_infra.name
+  subscription_id          = "${var.environment}SubscriptionId"
   allowed_locations        = var.policy_allowed_locations
   required_tags            = var.policy_required_tags
   kubernetes_policy_effect = var.kubernetes_policy_effect

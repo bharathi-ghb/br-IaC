@@ -27,6 +27,7 @@ variable "tags" {
     managedBy = "terraform"
     owner     = "abn-amro"
     environment = ""
+    cost_centre = "banking"
   }
 }
 
@@ -37,7 +38,7 @@ variable "tags" {
 variable "log_retention_days" {
   description = "Log Analytics retention in days."
   type        = number
-  default     = 90
+  default     = ""
 }
 
 variable "log_daily_quota_gb" {
@@ -62,6 +63,12 @@ variable "alert_email_receivers" {
   description = "Map of receiver name to email address for alerts."
   type        = map(string)
   default     = {}
+}
+
+variable "enable_local_auth" {
+  description = "Require Entra ID authentication."
+  type        = bool
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------
@@ -102,7 +109,7 @@ variable "pipeline_agent_subnet_prefix" {
 variable "internal_consumer_cidrs" {
   description = "Internal networks permitted."
   type        = list(string)
-  default     = ["10.0.0.0/8"]
+  default     = []
 }
 
 variable "enable_firewall" {
@@ -154,60 +161,21 @@ variable "firewall_name" {
 }
 
 variable "nsg_rules_aks_nodes" {
-  description = "(Optional) A list of security rules to apply to the Network Security Group"
-  type = list(object({
-    access                                     = string
-    description                                = optional(string, "")
-    destination_address_prefixes               = optional(list(string), null)
-    destination_application_security_group_ids = optional(list(string), [])
-    destination_port_ranges                    = optional(list(string), null)
-    direction                                  = optional(string, "Inbound")
-    name                                       = string
-    priority                                   = number
-    protocol                                   = optional(string, "Tcp")
-    source_address_prefixes                    = optional(list(string), null)
-    source_application_security_group_ids      = optional(list(string), [])
-    source_port_ranges                         = optional(list(string), null)
-  }))
-  default = []
+  description = "NSG Rules for AKS"
+  type        = list(object)
+  default     = []
 }
 
 variable "nsg_rules_private_endpoints" {
-  description = "(Optional) A list of security rules to apply to the Network Security Group"
-  type = list(object({
-    access                                     = string
-    description                                = optional(string, "")
-    destination_address_prefixes               = optional(list(string), null)
-    destination_application_security_group_ids = optional(list(string), [])
-    destination_port_ranges                    = optional(list(string), null)
-    direction                                  = optional(string, "Inbound")
-    name                                       = string
-    priority                                   = number
-    protocol                                   = optional(string, "Tcp")
-    source_address_prefixes                    = optional(list(string), null)
-    source_application_security_group_ids      = optional(list(string), [])
-    source_port_ranges                         = optional(list(string), null)
-  }))
-  default = []
+  description = "NSG Rules for Private Endpoints"
+  type        = list(object)
+  default     = []
 }
 
 variable "nsg_rules_pipeline_agents" {
-  description = "(Optional) A list of security rules to apply to the Network Security Group"
-  type = list(object({
-    access                                     = string
-    description                                = optional(string, "")
-    destination_address_prefixes               = optional(list(string), null)
-    destination_application_security_group_ids = optional(list(string), [])
-    destination_port_ranges                    = optional(list(string), null)
-    direction                                  = optional(string, "Inbound")
-    name                                       = string
-    priority                                   = number
-    protocol                                   = optional(string, "Tcp")
-    source_address_prefixes                    = optional(list(string), null)
-    source_application_security_group_ids      = optional(list(string), [])
-    source_port_ranges                         = optional(list(string), null)
-  }))
-  default = []
+  description = "NSG Rules for Pipeline Agents"
+  type        = list(object)
+  default     = []
 }
 
 # -----------------------------------------------------------------------------
@@ -233,7 +201,7 @@ variable "storage_account_count" {
 variable "storage_replication_type" {
   description = "Storage replication mode."
   type        = string
-  default     = "LRS"
+  default     = ""
 }
 
 variable "cache_container_name" {
@@ -257,7 +225,13 @@ variable "acr_untagged_retention_days" {
 variable "enable_kv_purge_protection" {
   description = "Enable Key Vault purge protection. Irreversible once on."
   type        = bool
-  default     = true
+  default     = ""
+}
+
+variable "zone_redundancy_enabled" {
+  description = "Zone redundancy property."
+  type        = bool
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------
@@ -297,7 +271,7 @@ variable "dns_service_ip" {
 variable "system_node_vm_size" {
   description = "VM size for the system node pool."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D2ds_v5"
 }
 
 variable "system_node_min_count" {
@@ -318,10 +292,16 @@ variable "enable_user_node_pool" {
   default     = true
 }
 
+variable "automatic_upgrade_channel" {
+  description = "AKS auto-upgrade channel: patch, stable, rapid, node-image or none."
+  type        = string
+  default     = ""
+}
+
 variable "user_node_vm_size" {
   description = "VM size for the application node pool."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D2ds_v5"
 }
 
 variable "user_node_min_count" {
@@ -481,11 +461,17 @@ variable "policy_required_tags" {
 variable "kubernetes_policy_effect" {
   description = "Effect for in-cluster Gatekeeper policies: Audit, Deny or Disabled."
   type        = string
-  default     = "Audit"
+  default     = ""
 }
 
 variable "policy_enforce" {
   description = "Whether policy assignments enforce their effect."
+  type        = bool
+  default     = true
+}
+
+variable "taint_system_pool" {
+  description = "Reserve the AKS system node pool for critical addons via the CriticalAddonsOnly taint. Requires enable_user_node_pool."
   type        = bool
   default     = true
 }

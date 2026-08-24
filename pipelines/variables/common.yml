@@ -29,19 +29,12 @@ variables:
   - name: imageTag
     value: "$(Build.BuildNumber)-$(Build.SourceVersion)"
 
-  - name: tfStateResourceGroup
-    value: "rg-tfstate-iac"
-  - name: tfStateStorageAccount
-    value: "satfstateiac001"
-  - name: tfStateContainer
-    value: "tfstate"
-
   - name: nonProdServiceConnection
     value: "subscription-non-prod"
   - name: prodServiceConnection
     value: "subscription-prod"
 
-  - name: nonProdSubscriptionId
+  - name: nonprodSubscriptionId
     value: "nonprod_sub_id"
   - name: prodSubscriptionId
     value: "prod_sub_id"
