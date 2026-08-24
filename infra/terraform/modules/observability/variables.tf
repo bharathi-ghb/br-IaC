@@ -31,7 +31,7 @@ variable "ampls_name" {
 variable "retention_in_days" {
   description = "Log retention."
   type        = number
-  default     = 90
+  default     = ""
 }
 
 variable "daily_quota_gb" {

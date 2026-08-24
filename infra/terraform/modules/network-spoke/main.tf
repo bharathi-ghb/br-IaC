@@ -101,7 +101,7 @@ resource "azurerm_subnet_network_security_group_association" "aks_nodes" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_route_table" "aks_nodes" {
-  name                = "rt-aks_nodes"
+  name                = var.route_table_name
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
@@ -171,31 +171,6 @@ resource "azurerm_subnet_network_security_group_association" "private_endpoints"
 }
 
 # ---------------------------------------------------------------------------
-
-resource "azurerm_route_table" "private_endpoints" {
-  name                = "rt-private-endpoints"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tags                = var.tags
-}
-
-/*
-resource "azurerm_route" "private_endpoints" {
-  name                = ""
-  resource_group_name = azurerm_route_table.private_endpoints.resource_group_name
-  route_table_name    = azurerm_route_table.private_endpoints.name
-  address_prefix      = ""
-  next_hop_type       = ""
-  next_hop_in_ip_address = ""
-}
-*/
-
-resource "azurerm_subnet_route_table_association" "private_endpoints" {
-  subnet_id      = azurerm_subnet.private_endpoints.id
-  route_table_id = azurerm_route_table.private_endpoints.id
-}
-
-# ---------------------------------------------------------------------------
 # Pipeline Agents (Subnet + NSG + NSG rules + NSG association)
 # ---------------------------------------------------------------------------
 
@@ -225,7 +200,7 @@ resource "azurerm_network_security_rule" "pipeline_agents" {
   description                  = each.value.description
   access                       = each.value.access
   protocol                     = each.value.protocol
-  source_address_prefixes      = try(each.value.source_address_prefixes, null)
+  source_address_prefixes      = compact([var.aks_subnet_prefix, var.private_endpoint_subnet_prefix])
   source_port_ranges           = try(each.value.source_port_ranges, null)
   destination_port_ranges      = try(each.value.destination_port_ranges, null)
   destination_address_prefixes = try(each.value.destination_address_prefixes, null)
@@ -240,29 +215,4 @@ resource "azurerm_network_security_rule" "pipeline_agents" {
 resource "azurerm_subnet_network_security_group_association" "pipeline_agents" {
   subnet_id                 = azurerm_subnet.pipeline_agents.id
   network_security_group_id = azurerm_network_security_group.pipeline_agents.id
-}
-
-# ---------------------------------------------------------------------------
-
-resource "azurerm_route_table" "pipeline_agents" {
-  name                = "rt-pipeline-agents"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tags                = var.tags
-}
-
-/*
-resource "azurerm_route" "pipeline_agents" {
-  name                = ""
-  resource_group_name = azurerm_route_table.pipeline_agents.resource_group_name
-  route_table_name    = azurerm_route_table.pipeline_agents.name
-  address_prefix      = ""
-  next_hop_type       = ""
-  next_hop_in_ip_address = ""
-}
-*/
-
-resource "azurerm_subnet_route_table_association" "pipeline_agents" {
-  subnet_id      = azurerm_subnet.pipeline_agents.id
-  route_table_id = azurerm_route_table.pipeline_agents.id
 }

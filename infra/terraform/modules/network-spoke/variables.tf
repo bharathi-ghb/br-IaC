@@ -103,7 +103,7 @@ variable "nsg_rules_aks_nodes" {
     name                                       = string
     priority                                   = number
     protocol                                   = optional(string, "Tcp")
-    source_address_prefixes                    = optional(list(string), null)
+    source_address_prefixes                    = var.internal_consumer_cidrs
     source_application_security_group_ids      = optional(list(string), [])
     source_port_ranges                         = optional(list(string), null)
   }))
@@ -122,7 +122,7 @@ variable "nsg_rules_private_endpoints" {
     name                                       = string
     priority                                   = number
     protocol                                   = optional(string, "Tcp")
-    source_address_prefixes                    = optional(list(string), null)
+    source_address_prefixes                    = var.internal_consumer_cidrs
     source_application_security_group_ids      = optional(list(string), [])
     source_port_ranges                         = optional(list(string), null)
   }))
