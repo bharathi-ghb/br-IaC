@@ -21,7 +21,7 @@ variable "tags" {
 variable "replication_type" {
   description = "Replication mode."
   type        = string
-  default     = "LRS"
+  default     = ""
 }
 
 variable "cache_container_name" {
@@ -42,12 +42,6 @@ variable "blob_retention_days" {
   default     = 7
 }
 
-variable "enable_infrastructure_encryption" {
-  description = "Enable double encryption at rest. Cannot be changed after creation. Otherwise creates a new storage account."
-  type        = bool
-  default     = true
-}
-
 variable "private_endpoint_subnet_id" {
   description = "Subnet that hosts the blob private endpoint."
   type        = string
@@ -65,12 +59,6 @@ variable "blob_private_dns_zone_name" {
 
 variable "data_contributor_principal_ids" {
   description = "Object IDs granted the roles in role_definition_names."
-  type        = list(string)
-  default     = []
-}
-
-variable "role_definition_names" {
-  description = "Built-in roles assigned to each principal in data_contributor_principal_ids."
   type        = list(string)
   default     = []
 }

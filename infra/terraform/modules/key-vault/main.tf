@@ -11,7 +11,7 @@ resource "azurerm_key_vault" "kv" {
   tags                          = var.tags
   rbac_authorization_enabled    = true
   enabled_for_disk_encryption   = true
-  purge_protection_enabled      = true
+  purge_protection_enabled      = var.enable_kv_purge_protection
   public_network_access_enabled = false
   soft_delete_retention_days    = var.soft_delete_retention_days
 

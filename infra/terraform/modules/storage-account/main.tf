@@ -48,6 +48,30 @@ resource "azurerm_storage_container" "cache" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_management_policy" "cache_expiry" {
+  storage_account_id = azurerm_storage_account.sa.id
+
+  rule {
+    name    = "expire-cached-responses"
+    enabled = true
+
+    filters {
+      blob_types   = ["blockBlob"]
+      prefix_match = ["${var.cache_container_name}/"]
+    }
+
+    actions {
+      base_blob {
+        delete_after_days_since_modification_greater_than = var.cache_expiry_days
+      }
+
+      version {
+        delete_after_days_since_creation = 1
+      }
+    }
+  }
+}
+
 resource "azurerm_private_endpoint" "storage_blob" {
   name                = "pe-blob-${var.name}"
   resource_group_name = var.resource_group_name

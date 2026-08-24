@@ -73,3 +73,9 @@ variable "log_analytics_workspace_id" {
   type        = string
   default     = ""
 }
+
+variable "enable_kv_purge_protection" {
+  description = "Enable Key Vault purge protection. Irreversible once on."
+  type        = bool
+  default     = true
+}
