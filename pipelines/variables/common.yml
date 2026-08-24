@@ -40,9 +40,9 @@ variables:
     value: "prod_sub_id"
 
   - name: nonProdAcrName
-    value: "acrnonprod"
+    value: "acrnonprod_uniqueString"
   - name: prodAcrName
-    value: "acrprod"
+    value: "acrprod_uniqueString"
 
   - name: appNamespace
     value: ""
