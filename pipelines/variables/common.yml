@@ -7,8 +7,11 @@ variables:
   - name: ciPoolName
     value: "Azure Pipelines"
 
-  - name: privatePoolName
-    value: "private-selfhosted-linux"
+  - name: privatePoolNameNonProd
+    value: "vm_name_nonprod"
+
+  - name: privatePoolNameProd
+    value: "vm_name_prod"
 
   - name: terraformVersion
     value: "1.9.5"

@@ -51,7 +51,7 @@ stages:
               inlineScript: |
                 set -euo pipefail
 
-                TF_DIR="$(infraRoot)/environments/${{ parameters.terraformEnv }}"
+                TF_DIR="$(infraRoot)"
 
                 export ARM_USE_OIDC=true
                 export ARM_USE_AZUREAD=true
@@ -62,10 +62,10 @@ stages:
                 export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                 terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                  -backend-config="${TF_DIR}/azurerm.tfbackend"
+                  -backend-config="${TF_DIR}/environments/${{ parameters.terraformEnv }}/azurerm.tfbackend"
 
                 set +e
-                terraform -chdir="${TF_DIR}" plan -input=false -no-color -lock-timeout=5m \
+                terraform -chdir="${TF_DIR}" plan -var-file="${TF_DIR}/environments/${{ parameters.terraformEnv }}/terraform.tfvars" -input=false -no-color -lock-timeout=5m \
                   -detailed-exitcode -out=tfplan.binary
                 PLAN_EXIT=$?
                 set -e
@@ -127,7 +127,7 @@ stages:
                     inlineScript: |
                       set -euo pipefail
 
-                      TF_DIR="$(infraRoot)/environments/${{ parameters.terraformEnv }}"
+                      TF_DIR="$(infraRoot)"
 
                       export ARM_USE_OIDC=true
                       export ARM_USE_AZUREAD=true
@@ -138,7 +138,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="${TF_DIR}/azurerm.tfbackend"
+                        -backend-config="${TF_DIR}/environments/${{ parameters.terraformEnv }}/azurerm.tfbackend"
 
                       cp "$(Pipeline.Workspace)/tfplan-${{ parameters.terraformEnv }}/tfplan.binary" \
                          "${TF_DIR}/tfplan.binary"
@@ -160,7 +160,7 @@ stages:
                     inlineScript: |
                       set -euo pipefail
 
-                      TF_DIR="$(infraRoot)/environments/${{ parameters.terraformEnv }}"
+                      TF_DIR="$(infraRoot)"
 
                       export ARM_USE_OIDC=true
                       export ARM_USE_AZUREAD=true
@@ -171,7 +171,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="${TF_DIR}/azurerm.tfbackend"
+                        -backend-config="${TF_DIR}/environments/${{ parameters.terraformEnv }}/azurerm.tfbackend"
 
                       mkdir -p "$(Build.ArtifactStagingDirectory)/tfout"
 

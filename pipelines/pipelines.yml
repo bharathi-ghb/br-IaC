@@ -35,23 +35,24 @@ stages:
   # ===========================================================================
   - template: templates/stage-validate.yml
     parameters:
-      poolName: $(privatePoolName)
+      poolName: $(ciPoolName)
 
   - template: templates/stage-security.yml
     parameters:
-      poolName: $(privatePoolName)
+      poolName: $(ciPoolName)
       dependsOn: [Validate]
-
-  - template: templates/stage-build-image.yml
-    parameters:
-      poolName: $(privatePoolName)
-      dependsOn: [Security]
-      serviceConnection: $(nonProdServiceConnection)
-      acrName: $(nonProdAcrName)
 
   # ===========================================================================
   # non-prod - deployed from main. gate: with peer-approval.
   # ===========================================================================
+  - template: templates/stage-build-image.yml
+    parameters:
+      stageName: Build_Image_nonProd
+      poolName: $(privatePoolNameNonProd)
+      dependsOn: [Security]
+      serviceConnection: $(nonProdServiceConnection)
+      acrName: $(nonProdAcrName)
+  
   - template: templates/stage-terraform.yml
     parameters:
       stageName: Infra_nonProd
@@ -59,7 +60,7 @@ stages:
       dependsOn: [BuildImage]
       environmentName: nonprod-environment
       terraformEnv: nonprod
-      poolName: $(privatePoolName)
+      poolName: $(privatePoolNameNonProd)
       serviceConnection: $(nonProdServiceConnection)
       subscriptionId: $(nonProdSubscriptionId)
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
@@ -72,13 +73,21 @@ stages:
       environmentName: nonprod-environment
       terraformEnv: nonprod
       valuesFile: values-nonprod.yaml
-      poolName: $(privatePoolName)
+      poolName: $(privatePoolNameNonProd)
       serviceConnection: $(nonProdServiceConnection)
       subscriptionId: $(nonProdSubscriptionId)
 
   # ===========================================================================
   # Prod - deployed from main. gate: with manager/architect-approval.
   # ===========================================================================
+  - template: templates/stage-build-image.yml
+    parameters:
+      stageName: Build_Image_Prod
+      poolName: $(privatePoolNameProd)
+      dependsOn: [Security]
+      serviceConnection: $(ProdServiceConnection)
+      acrName: $(ProdAcrName)
+
   - template: templates/stage-terraform.yml
     parameters:
       stageName: Infra_Prod
@@ -86,7 +95,7 @@ stages:
       dependsOn: [Deploy_nonProd]
       environmentName: prod-environment
       terraformEnv: prod
-      poolName: $(privatePoolName)
+      poolName: $(privatePoolNameProd)
       serviceConnection: $(prodServiceConnection)
       subscriptionId: $(prodSubscriptionId)
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
@@ -99,6 +108,6 @@ stages:
       environmentName: prod-environment
       terraformEnv: prod
       valuesFile: values-prod.yaml
-      poolName: $(privatePoolName)
+      poolName: $(privatePoolNameProd)
       serviceConnection: $(prodServiceConnection)
       subscriptionId: $(prodSubscriptionId)

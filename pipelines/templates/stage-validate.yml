@@ -42,7 +42,7 @@ stages:
                 provider: "azurerm"
                 command: "custom"
                 customCommand: "init"
-                workingDirectory: "$(infraRoot)/environments/${{ env }}"
+                workingDirectory: "$(infraRoot)"
                 backendType: "selfConfigured"
                 commandOptions: "-backend-config=$(infraRoot)/environments/${{ env }}/azurerm.tfbackend"
 
@@ -52,7 +52,7 @@ stages:
                 provider: "azurerm"
                 command: "custom"
                 customCommand: "validate"
-                workingDirectory: "$(infraRoot)/environments/${{ env }}"
+                workingDirectory: "$(infraRoot)"
                 commandOptions: "-no-color"
 
           - script: |

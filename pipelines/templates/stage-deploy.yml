@@ -98,7 +98,7 @@ stages:
                     inlineScript: |
                       set -euo pipefail
 
-                      TF_DIR="$(infraRoot)/environments/${{ parameters.terraformEnv }}"
+                      TF_DIR="$(infraRoot)"
 
                       export ARM_USE_OIDC=true
                       export ARM_USE_AZUREAD=true
@@ -109,7 +109,7 @@ stages:
                       export TF_VAR_subscription_id="${{ parameters.subscriptionId }}"
 
                       terraform -chdir="${TF_DIR}" init -input=false -no-color \
-                        -backend-config="${TF_DIR}/azurerm.tfbackend" >/dev/null
+                        -backend-config="${TF_DIR}/environments/${{ parameters.terraformEnv }}/azurerm.tfbackend" >/dev/null
 
                       kubectl create namespace "$(targetNamespace)" \
                         --dry-run=client -o yaml | kubectl apply -f -
