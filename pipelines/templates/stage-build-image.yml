@@ -2,6 +2,8 @@
 # Stage: BuildImage
 # =============================================================================
 parameters:
+  - name: stageName
+    type: string
   - name: poolName
     type: string
   - name: dependsOn
@@ -13,7 +15,7 @@ parameters:
     type: string
 
 stages:
-  - stage: BuildImage
+  - stage: ${{ parameters.stageName }}
     displayName: "CI - build, scan and push image"
     dependsOn: ${{ parameters.dependsOn }}
     jobs:

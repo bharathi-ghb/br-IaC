@@ -57,7 +57,7 @@ stages:
     parameters:
       stageName: Infra_nonProd
       displayName: "non-prod - infrastructure"
-      dependsOn: [BuildImage]
+      dependsOn: [Build_Image_nonProd]
       environmentName: nonprod-environment
       terraformEnv: nonprod
       poolName: $(privatePoolNameNonProd)
