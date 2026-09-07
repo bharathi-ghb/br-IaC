@@ -1,0 +1,10 @@
+# -----------------------------------------------
+# Considering the below resources were already presented in Subscription and we can reference & use it via DATA module
+# --------------------------------------------------
+subscription_id      = "SUB_prod"
+resource_group_name  = "RG_prod"
+storage_account_name = "SA_prod"
+container_name       = "SA-blob"
+key                  = "prod.tfstate"
+use_oidc             = true
+use_azuread_auth     = true

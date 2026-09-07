@@ -1,0 +1,109 @@
+
+# --- Image -------------------------------------------------------------------
+image:
+  registry: ""
+  repository: br-iac
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 2
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+
+workloadIdentity:
+  enabled: true
+  clientId: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+config:
+  logLevel: info
+  storageAccountName: ""
+  cacheContainer: shows-cache
+  cacheTtlSeconds: 3600
+  tvmazeBaseUrl: https://api.tvmaze.com
+  upstreamTimeoutMs: 5000
+
+secret:
+
+  existingSecret: banking-application-telemetry
+  connectionStringKey: APPLICATIONINSIGHTS_CONNECTION_STRING
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  internalLoadBalancer:
+    enabled: false
+    subnet: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 10
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startup:
+    enabled: true
+    path: /healthz
+    periodSeconds: 5
+    failureThreshold: 12
+
+nodeSelector: {}
+tolerations: []
+
+topologySpreadEnabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+networkPolicy:
+  enabled: true
+  allowedEgressCidrs:
+    - 10.0.0.0/8
+
+terminationGracePeriodSeconds: 30
+
+commonLabels: {}

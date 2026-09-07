@@ -1,0 +1,89 @@
+# =============================================================================
+# Stage: BuildImage
+# =============================================================================
+parameters:
+  - name: poolName
+    type: string
+  - name: dependsOn
+    type: object
+    default: []
+  - name: serviceConnection
+    type: string
+  - name: acrName
+    type: string
+
+stages:
+  - stage: BuildImage
+    displayName: "CI - build, scan and push image"
+    dependsOn: ${{ parameters.dependsOn }}
+    jobs:
+      - job: Build
+        displayName: "Docker build, Trivy scan, ACR push"
+        pool:
+          name: ${{ parameters.poolName }}
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - script: |
+              set -euo pipefail
+              docker build \
+                --file "$(appPath)/Dockerfile" \
+                --tag "$(imageRepository):$(imageTag)" \
+                --label "org.opencontainers.image.revision=$(Build.SourceVersion)" \
+                --label "org.opencontainers.image.source=$(Build.Repository.Uri)" \
+                --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                --label "org.opencontainers.image.version=$(imageTag)" \
+                "$(appPath)"
+            displayName: "docker build"
+
+          - script: |
+              set -euo pipefail
+              command -v trivy >/dev/null 2>&1 || \
+                curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+                  | sh -s -- -b /usr/local/bin v0.58.1
+
+              trivy image "$(imageRepository):$(imageTag)" \
+                --severity "$(securitySeverityThreshold)" \
+                --ignore-unfixed \
+                --exit-code 1 \
+                --format table
+            displayName: "Trivy image scan (fails on HIGH/CRITICAL)"
+
+          - task: AzureCLI@2
+            displayName: "Tag and push to private ACR"
+            inputs:
+              azureSubscription: ${{ parameters.serviceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+
+                # Token-based login via the federated identity. No credentials
+                # are passed on the command line or stored on the agent.
+                az acr login --name "${{ parameters.acrName }}"
+
+                LOGIN_SERVER="$(az acr show --name "${{ parameters.acrName }}" --query loginServer -o tsv)"
+                echo "Registry: ${LOGIN_SERVER}"
+
+                # Immutable, traceable tag.
+                docker tag "$(imageRepository):$(imageTag)" \
+                  "${LOGIN_SERVER}/$(imageRepository):$(imageTag)"
+                docker push "${LOGIN_SERVER}/$(imageRepository):$(imageTag)"
+
+                # A moving 'main' tag for humans browsing the registry. Nothing
+                # deploys from it - releases always reference the immutable tag.
+                if [[ "$(Build.SourceBranch)" == "refs/heads/main" ]]; then
+                  docker tag "$(imageRepository):$(imageTag)" \
+                    "${LOGIN_SERVER}/$(imageRepository):main"
+                  docker push "${LOGIN_SERVER}/$(imageRepository):main"
+                fi
+
+                echo "##vso[task.setvariable variable=acrLoginServer;isOutput=true]${LOGIN_SERVER}"
+            name: push
+
+          - script: |
+              docker rmi "$(imageRepository):$(imageTag)" || true
+              docker image prune -f || true
+            displayName: "Clean up local images"
+            condition: always()
