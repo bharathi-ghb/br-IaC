@@ -1,0 +1,162 @@
+#!/bin/bash
+# =============================================================================
+# Self-hosted Azure Pipelines agent — first-boot bootstrap
+# =============================================================================
+set -euxo pipefail
+exec > >(tee -a /var/log/agent-bootstrap.log) 2>&1
+echo "== bootstrap started: $(date -u --iso-8601=seconds)"
+
+export DEBIAN_FRONTEND=noninteractive
+
+# -----------------------------------------------------------------------------
+# Base packages
+# -----------------------------------------------------------------------------
+apt-get update -y
+apt-get install -y --no-install-recommends \
+  ca-certificates curl gnupg lsb-release unzip jq git \
+  apt-transport-https software-properties-common python3-pip
+
+# -----------------------------------------------------------------------------
+# Docker (image builds in the BuildImage stage)
+# -----------------------------------------------------------------------------
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+
+# -----------------------------------------------------------------------------
+# Azure CLI (identity/OIDC login, az acr / az aks / az keyvault calls)
+# -----------------------------------------------------------------------------
+curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+# -----------------------------------------------------------------------------
+# kubectl (pinned to match pipelines/variables/common.yml)
+# -----------------------------------------------------------------------------
+curl -fsSL -o /usr/local/bin/kubectl \
+  "https://dl.k8s.io/release/v${kubectl_version}/bin/linux/amd64/kubectl"
+chmod 0755 /usr/local/bin/kubectl
+
+# -----------------------------------------------------------------------------
+# kubelogin (Entra ID auth for the private AKS API server)
+# -----------------------------------------------------------------------------
+curl -fsSL -o /tmp/kubelogin.zip \
+  "https://github.com/Azure/kubelogin/releases/latest/download/kubelogin-linux-amd64.zip"
+unzip -q /tmp/kubelogin.zip -d /tmp/kubelogin
+install -m 0755 /tmp/kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/kubelogin
+rm -rf /tmp/kubelogin*
+
+# -----------------------------------------------------------------------------
+# Terraform (pinned to match pipelines/variables/common.yml)
+# -----------------------------------------------------------------------------
+curl -fsSL -o /tmp/terraform.zip \
+  "https://releases.hashicorp.com/terraform/${terraform_version}/terraform_${terraform_version}_linux_amd64.zip"
+unzip -q /tmp/terraform.zip -d /tmp/terraform
+install -m 0755 /tmp/terraform/terraform /usr/local/bin/terraform
+rm -rf /tmp/terraform*
+
+# -----------------------------------------------------------------------------
+# Helm (pinned to match pipelines/variables/common.yml)
+# -----------------------------------------------------------------------------
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+  | bash -s -- --version "v${helm_version}"
+
+# -----------------------------------------------------------------------------
+# tflint (used by the Validate stage)
+# -----------------------------------------------------------------------------
+curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+# -----------------------------------------------------------------------------
+# Checkov (IaC security scanning — Security stage)
+# -----------------------------------------------------------------------------
+pip3 install --no-cache-dir checkov
+
+# -----------------------------------------------------------------------------
+# Trivy (image + filesystem scanning — Security / BuildImage stages)
+# -----------------------------------------------------------------------------
+curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+  | sh -s -- -b /usr/local/bin "v${trivy_version}"
+
+# -----------------------------------------------------------------------------
+# Gitleaks (committed-secret scanning — Security stage)
+# -----------------------------------------------------------------------------
+curl -fsSL -o /tmp/gitleaks.tar.gz \
+  "https://github.com/gitleaks/gitleaks/releases/download/v${gitleaks_version}/gitleaks_${gitleaks_version}_linux_x64.tar.gz"
+tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+chmod 0755 /usr/local/bin/gitleaks
+rm -f /tmp/gitleaks.tar.gz
+
+# -----------------------------------------------------------------------------
+# kubeconform (rendered-manifest validation — Validate stage)
+# -----------------------------------------------------------------------------
+curl -fsSL -o /tmp/kubeconform.tar.gz \
+  "https://github.com/yannh/kubeconform/releases/download/v${kubeconform_version}/kubeconform-linux-amd64.tar.gz"
+tar -xzf /tmp/kubeconform.tar.gz -C /usr/local/bin kubeconform
+chmod 0755 /usr/local/bin/kubeconform
+rm -f /tmp/kubeconform.tar.gz
+
+# -----------------------------------------------------------------------------
+# Node.js 22 (application lint/unit tests — Validate stage)
+# -----------------------------------------------------------------------------
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+
+# -----------------------------------------------------------------------------
+# Dedicated, unprivileged service account for the agent process
+# -----------------------------------------------------------------------------
+id -u azdevops >/dev/null 2>&1 || useradd -m -s /bin/bash azdevops
+usermod -aG docker azdevops
+
+# -----------------------------------------------------------------------------
+# Azure Pipelines agent binary
+# -----------------------------------------------------------------------------
+mkdir -p /opt/azdevops-agent
+curl -fsSL -o /tmp/agent.tar.gz \
+  "https://vstsagentpackage.azureedge.net/agent/${agent_version}/vsts-agent-linux-x64-${agent_version}.tar.gz"
+tar -xzf /tmp/agent.tar.gz -C /opt/azdevops-agent
+rm -f /tmp/agent.tar.gz
+chown -R azdevops:azdevops /opt/azdevops-agent
+
+set +x
+
+IMDS_TOKEN="$(curl -sf -H Metadata:true \
+  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net" \
+  | jq -r .access_token)"
+
+AGENT_PAT="$(curl -sf -H "Authorization: Bearer $${IMDS_TOKEN}" \
+  "${key_vault_uri}secrets/${pat_secret_name}?api-version=7.4" \
+  | jq -r .value)"
+unset IMDS_TOKEN
+
+if [[ -z "$${AGENT_PAT}" || "$${AGENT_PAT}" == "null" ]]; then
+  echo "ERROR: could not read secret '${pat_secret_name}' from ${key_vault_uri} — has it been created yet?" >&2
+  exit 1
+fi
+
+AGENT_HOSTNAME="$(hostname)"
+sudo -u azdevops -H env AGENT_PAT="$${AGENT_PAT}" AGENT_HOSTNAME="$${AGENT_HOSTNAME}" bash -c '
+  cd /opt/azdevops-agent && ./config.sh --unattended \
+    --url "${devops_org_url}" \
+    --auth pat \
+    --token "$AGENT_PAT" \
+    --pool "${devops_pool_name}" \
+    --agent "$AGENT_HOSTNAME" \
+    --acceptTeeEula \
+    --replace
+'
+
+unset AGENT_PAT AGENT_HOSTNAME
+set -x
+
+# -----------------------------------------------------------------------------
+# Run as a systemd service so the agent survives reboots
+# -----------------------------------------------------------------------------
+cd /opt/azdevops-agent
+./svc.sh install azdevops
+./svc.sh start
+
+echo "== bootstrap finished: $(date -u --iso-8601=seconds)"
