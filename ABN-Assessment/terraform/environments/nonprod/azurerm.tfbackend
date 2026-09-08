@@ -1,0 +1,10 @@
+# -----------------------------------------------
+# Considering the below resources were already presented in Subscription and we can reference & use it via DATA module
+# --------------------------------------------------
+subscription_id      = "516c1b59-5c37-4c4e-8074-e099f7fe5f1e"
+resource_group_name  = "rg-nonprod-iac"
+storage_account_name = "stnonprodiactfstate"
+container_name       = "tfstate"
+key                  = "nonprod.tfstate"
+use_oidc             = true
+use_azuread_auth     = true

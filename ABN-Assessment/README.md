@@ -1,5 +1,3 @@
-test
-added from local
 # Banking API Platform
 
 An internal API platform for a banking organisation, built on a private AKS cluster.
